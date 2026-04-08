@@ -20,7 +20,7 @@ import { supabase } from "../lib/supabase";
 const products = [
   { name: "Snapshot", price: 150, description: "Snapshot" },
   { name: "Two Strips", price: 200, description: "Two strips" },
-  { name: "One Strip", price: 250, description: "One strip" },
+  { name: "One strip", price: 250, description: "One strip" },
   { name: "Reprint", price: 100, description: "Reprint" },
   { name: "Ministrips", price: 200, description: "Ministrips" },
   { name: "Keychain", price: 30, description: "Keychain" },
