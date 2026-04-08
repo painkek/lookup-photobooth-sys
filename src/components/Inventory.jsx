@@ -7,13 +7,18 @@ import {
   TrendingDown,
   Plus,
   Search,
-  Filter,
   RefreshCw,
   Trash2,
+  X,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-// REMOVED "frame" from this list
+/**
+ * DarkVeil Inventory Component
+ * Aesthetic: Deep obsidian backgrounds, glassmorphism cards, glowing stock indicators, and vibrant status alerts.
+ */
 const inventoryItems = [
   {
     type: "photo_paper",
@@ -43,7 +48,6 @@ const inventoryItems = [
     icon: "🔑",
     defaultThreshold: 20,
   },
-  // REMOVED: frame item
 ];
 
 export default function Inventory({ branch }) {
@@ -54,10 +58,7 @@ export default function Inventory({ branch }) {
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [formData, setFormData] = useState({
-    quantity: "",
-    notes: "",
-  });
+  const [formData, setFormData] = useState({ quantity: "", notes: "" });
   const [editFormData, setEditFormData] = useState({
     item_name: "",
     unit: "",
@@ -71,7 +72,6 @@ export default function Inventory({ branch }) {
     low_stock_threshold: 50,
   });
 
-  // Fetch inventory from Supabase
   useEffect(() => {
     fetchInventory();
   }, [branch]);
@@ -86,7 +86,6 @@ export default function Inventory({ branch }) {
 
     if (error) {
       console.error("Error fetching inventory:", error);
-      alert("Error loading inventory: " + error.message);
     } else if (data && data.length > 0) {
       setInventory(data);
     } else {
@@ -104,38 +103,19 @@ export default function Inventory({ branch }) {
       unit: item.unit,
       low_stock_threshold: item.defaultThreshold,
     }));
-
     const { error } = await supabase.from("inventory").insert(defaultItems);
-
-    if (error) {
-      console.error("Error creating default inventory:", error);
-    } else {
-      fetchInventory();
-    }
+    if (!error) fetchInventory();
   };
 
   const handleRestock = async (e) => {
     e.preventDefault();
-
     const newQuantity = selectedItem.quantity + parseInt(formData.quantity);
-
     const { error } = await supabase
       .from("inventory")
-      .update({
-        quantity: newQuantity,
-        updated_at: new Date(),
-      })
+      .update({ quantity: newQuantity, updated_at: new Date() })
       .eq("id", selectedItem.id);
 
-    if (error) {
-      alert("Error updating inventory: " + error.message);
-    } else {
-      alert(`Successfully restocked ${selectedItem.item_name}!
-     
-Added: ${formData.quantity} ${selectedItem.unit}
-New Total: ${newQuantity} ${selectedItem.unit}
-${formData.notes ? `Notes: ${formData.notes}` : ""}`);
-
+    if (!error) {
       setShowRestockModal(false);
       setSelectedItem(null);
       setFormData({ quantity: "", notes: "" });
@@ -143,7 +123,6 @@ ${formData.notes ? `Notes: ${formData.notes}` : ""}`);
     }
   };
 
-  // ADD THIS FUNCTION - Handle Edit Item
   const handleEditItem = (item) => {
     setSelectedItem(item);
     setEditFormData({
@@ -154,10 +133,8 @@ ${formData.notes ? `Notes: ${formData.notes}` : ""}`);
     setShowEditItemModal(true);
   };
 
-  // ADD THIS FUNCTION - Handle Update Item
   const handleUpdateItem = async (e) => {
     e.preventDefault();
-
     const { error } = await supabase
       .from("inventory")
       .update({
@@ -168,39 +145,20 @@ ${formData.notes ? `Notes: ${formData.notes}` : ""}`);
       })
       .eq("id", selectedItem.id);
 
-    if (error) {
-      alert("Error updating item: " + error.message);
-    } else {
-      alert(`Successfully updated ${selectedItem.item_name}!
-     
-New Name: ${editFormData.item_name}
-Unit: ${editFormData.unit}
-Threshold: ${editFormData.low_stock_threshold}`);
-
+    if (!error) {
       setShowEditItemModal(false);
       setSelectedItem(null);
       fetchInventory();
     }
   };
 
-  // ADD THIS FUNCTION - Handle Delete Item
   const handleDeleteItem = async (item) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${item.item_name} from inventory?`
-      )
-    ) {
+    if (window.confirm(`Delete ${item.item_name}?`)) {
       const { error } = await supabase
         .from("inventory")
         .delete()
         .eq("id", item.id);
-
-      if (error) {
-        alert("Error deleting item: " + error.message);
-      } else {
-        alert(`${item.item_name} deleted successfully!`);
-        fetchInventory();
-      }
+      if (!error) fetchInventory();
     }
   };
 
@@ -209,17 +167,11 @@ Threshold: ${editFormData.low_stock_threshold}`);
       .from("inventory")
       .update({ low_stock_threshold: newThreshold })
       .eq("id", item.id);
-
-    if (error) {
-      alert("Error updating threshold: " + error.message);
-    } else {
-      fetchInventory();
-    }
+    if (!error) fetchInventory();
   };
 
   const handleAddNewItem = async (e) => {
     e.preventDefault();
-
     const { error } = await supabase.from("inventory").insert([
       {
         branch_id: branch.id,
@@ -232,16 +184,7 @@ Threshold: ${editFormData.low_stock_threshold}`);
         low_stock_threshold: parseInt(newItemData.low_stock_threshold),
       },
     ]);
-
-    if (error) {
-      alert("Error adding item: " + error.message);
-    } else {
-      alert(`Successfully added new item!
-     
-Item: ${newItemData.item_name}
-Quantity: ${newItemData.quantity} ${newItemData.unit}
-Threshold: ${newItemData.low_stock_threshold}`);
-
+    if (!error) {
       setShowAddItemModal(false);
       setNewItemData({
         item_type: "photo_paper",
@@ -254,7 +197,6 @@ Threshold: ${newItemData.low_stock_threshold}`);
     }
   };
 
-  // Calculate summary stats - REMOVED frame from avgPrice
   const totalItems = inventory.length;
   const totalValue = inventory.reduce((sum, item) => {
     const avgPrice = {
@@ -265,23 +207,19 @@ Threshold: ${newItemData.low_stock_threshold}`);
     };
     return sum + item.quantity * (avgPrice[item.item_type] || 10);
   }, 0);
-
   const lowStockItems = inventory.filter(
     (item) => item.quantity <= item.low_stock_threshold
   );
   const outOfStockItems = inventory.filter((item) => item.quantity === 0);
-
   const lastRestocked = inventory.reduce((latest, item) => {
     if (
       item.updated_at &&
       (!latest || new Date(item.updated_at) > new Date(latest))
-    ) {
+    )
       return item.updated_at;
-    }
     return latest;
   }, null);
 
-  // Filter inventory
   const filteredInventory = inventory.filter(
     (item) =>
       item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -290,91 +228,111 @@ Threshold: ${newItemData.low_stock_threshold}`);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading inventory...</p>
-        </div>
+      <div className="flex justify-center items-center h-96">
+        <div className="w-10 h-10 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin" />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+  const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "" }) => (
+    <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5 transition-all hover:border-white/10">
+      <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Inventory Management
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Track and manage supplies for {branch.name}
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+            {title}
+          </p>
+          <p className={`text-2xl font-semibold tracking-tight ${colorClass}`}>
+            {prefix}
+            {typeof value === "number" ? value.toLocaleString() : value}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+          <Icon className="w-5 h-5 text-slate-400" />
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div>
+          <h2 className="text-3xl font-bold text-white tracking-tight">
+            Inventory
+          </h2>
+          <p className="text-slate-400">
+            Stock management for{" "}
+            <span className="text-purple-400 font-medium">{branch.name}</span>
+          </p>
+        </div>
+        <div className="flex gap-3">
           <button
             onClick={() => fetchInventory()}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-            title="Refresh"
+            className="p-2.5 bg-white/5 border border-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-5 h-5" />
           </button>
           <button
             onClick={() => setShowAddItemModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-semibold transition-all hover:bg-purple-500 active:scale-95 shadow-[0_0_20px_-5px_rgba(168,85,247,0.5)]"
           >
             <Plus className="w-4 h-4" /> Add Item
           </button>
         </div>
       </div>
 
-      {/* Low Stock & Out of Stock Warnings */}
+      {/* Stock Alerts */}
       {(lowStockItems.length > 0 || outOfStockItems.length > 0) && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <h3 className="font-semibold text-red-800">Stock Alerts</h3>
+        <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <h3 className="text-sm font-bold text-red-400 uppercase tracking-widest">
+              Critical Stock Alerts
+            </h3>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {outOfStockItems.map((item) => (
               <div
                 key={item.id}
-                className="flex justify-between items-center p-2 bg-red-100 rounded"
+                className="flex justify-between items-center p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
               >
-                <span className="font-medium text-red-800">
-                  ⚠️ {item.item_name}
+                <span className="text-sm font-bold text-red-200">
+                  {item.item_name}{" "}
+                  <span className="text-[10px] text-red-400 ml-1 opacity-60">
+                    OUT OF STOCK
+                  </span>
                 </span>
-                <span className="text-red-800 font-bold">OUT OF STOCK!</span>
                 <button
                   onClick={() => {
                     setSelectedItem(item);
                     setShowRestockModal(true);
                   }}
-                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                  className="px-3 py-1 bg-red-500 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-red-400 transition-colors"
                 >
-                  Restock Now
+                  Restock
                 </button>
               </div>
             ))}
             {lowStockItems
-              .filter((item) => item.quantity > 0)
+              .filter((i) => i.quantity > 0)
               .map((item) => (
                 <div
                   key={item.id}
-                  className="flex justify-between items-center p-2 bg-orange-100 rounded"
+                  className="flex justify-between items-center p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl"
                 >
-                  <span className="font-medium text-orange-800">
-                    ⚠️ {item.item_name}
-                  </span>
-                  <span className="text-orange-800">
-                    Only {item.quantity} {item.unit} left (Threshold:{" "}
-                    {item.low_stock_threshold})
+                  <span className="text-sm font-bold text-amber-200">
+                    {item.item_name}{" "}
+                    <span className="text-[10px] text-amber-400 ml-1 opacity-60">
+                      {item.quantity} {item.unit} left
+                    </span>
                   </span>
                   <button
                     onClick={() => {
                       setSelectedItem(item);
                       setShowRestockModal(true);
                     }}
-                    className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm"
+                    className="px-3 py-1 bg-amber-500 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-amber-400 transition-colors"
                   >
                     Restock
                   </button>
@@ -384,74 +342,59 @@ Threshold: ${newItemData.low_stock_threshold}`);
         </div>
       )}
 
-      {/* Inventory Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
-            </div>
-            <Package className="w-8 h-8 text-purple-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-green-600">
-                ₱{totalValue.toLocaleString()}
-              </p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-green-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Low Stock Items</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {lowStockItems.length}
-              </p>
-            </div>
-            <TrendingDown className="w-8 h-8 text-orange-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Last Restocked</p>
-              <p className="text-lg font-bold text-gray-900">
-                {lastRestocked
-                  ? new Date(lastRestocked).toLocaleDateString()
-                  : "Never"}
-              </p>
-            </div>
-            <Package className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Items"
+          value={totalItems}
+          icon={Package}
+          colorClass="text-white"
+        />
+        <StatCard
+          title="Total Value"
+          value={totalValue}
+          prefix="₱"
+          icon={TrendingUp}
+          colorClass="text-emerald-400"
+        />
+        <StatCard
+          title="Low Stock"
+          value={lowStockItems.length}
+          icon={TrendingDown}
+          colorClass="text-amber-400"
+        />
+        <StatCard
+          title="Last Restocked"
+          value={
+            lastRestocked
+              ? new Date(lastRestocked).toLocaleDateString()
+              : "Never"
+          }
+          icon={RefreshCw}
+          colorClass="text-blue-400"
+        />
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <div className="bg-[#121214]/40 border border-white/5 rounded-2xl p-4 backdrop-blur-sm">
+        <div className="relative group">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
           <input
             type="text"
             placeholder="Search inventory items..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/5 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
           />
         </div>
       </div>
 
-      {/* Inventory Grid - Updated with Edit and Delete buttons */}
+      {/* Inventory Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredInventory.map((item) => {
           const isLowStock = item.quantity <= item.low_stock_threshold;
           const stockPercentage = Math.min(
-            (item.quantity / item.low_stock_threshold) * 100,
+            (item.quantity / (item.low_stock_threshold * 2)) * 100,
             100
           );
           const itemInfo = inventoryItems.find(
@@ -461,86 +404,87 @@ Threshold: ${newItemData.low_stock_threshold}`);
           return (
             <div
               key={item.id}
-              className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 hover:shadow-md transition"
+              className="group relative bg-[#121214]/60 border border-white/5 rounded-3xl p-6 transition-all hover:border-white/10 hover:bg-[#121214]/80"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">{itemInfo?.icon || "📦"}</div>
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-2xl border border-white/5 group-hover:border-purple-500/30 transition-colors">
+                    {itemInfo?.icon || "📦"}
+                  </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="font-bold text-white tracking-tight">
                       {item.item_name}
                     </h3>
-                    <p className="text-xs text-gray-500 capitalize">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">
                       {item.item_type.replace("_", " ")}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {/* Edit button - opens edit modal */}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleEditItem(item)}
-                    className="text-green-600 hover:text-green-800"
-                    title="Edit Item"
+                    className="p-2 text-slate-400 hover:text-emerald-400 transition-colors"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  {/* Delete button */}
                   <button
                     onClick={() => handleDeleteItem(item)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Delete Item"
+                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-2xl font-bold text-gray-900">
+                  <span className="text-3xl font-bold text-white tracking-tight">
                     {item.quantity}
                   </span>
-                  <span className="text-sm text-gray-600">{item.unit}</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    {item.unit}
+                  </span>
                 </div>
 
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">Stock Level</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                      Stock Health
+                    </span>
                     <span
-                      className={
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
                         isLowStock
-                          ? "text-red-600 font-medium"
-                          : "text-green-600"
-                      }
+                          ? "bg-red-500/10 text-red-400 border-red-500/20"
+                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      }`}
                     >
-                      {isLowStock ? "Low Stock" : "Good"}
+                      {isLowStock ? "Critical" : "Optimal"}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-2 rounded-full transition-all ${
-                        isLowStock ? "bg-red-600" : "bg-green-600"
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        isLowStock ? "bg-red-500" : "bg-emerald-500"
                       }`}
                       style={{ width: `${stockPercentage}%` }}
-                    ></div>
+                    />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] text-slate-600 italic">
                     Threshold: {item.low_stock_threshold} {item.unit}
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t">
+                <div className="flex gap-2 pt-2">
                   <button
                     onClick={() => {
                       const newThreshold = prompt(
-                        "Enter new low stock threshold:",
+                        "Enter new threshold:",
                         item.low_stock_threshold
                       );
-                      if (newThreshold && !isNaN(newThreshold)) {
+                      if (newThreshold && !isNaN(newThreshold))
                         handleUpdateThreshold(item, parseInt(newThreshold));
-                      }
                     }}
-                    className="text-sm text-purple-600 hover:text-purple-800"
+                    className="flex-1 py-2 bg-white/5 border border-white/5 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all"
                   >
                     Set Threshold
                   </button>
@@ -549,7 +493,7 @@ Threshold: ${newItemData.low_stock_threshold}`);
                       setSelectedItem(item);
                       setShowRestockModal(true);
                     }}
-                    className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200"
+                    className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] font-bold text-emerald-400 uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
                   >
                     + Restock
                   </button>
@@ -560,55 +504,55 @@ Threshold: ${newItemData.low_stock_threshold}`);
         })}
       </div>
 
+      {/* Empty State */}
       {filteredInventory.length === 0 && (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No inventory items found
-          </h3>
-          <p className="text-gray-500">
-            Click "Add Item" to start tracking your inventory.
+        <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-16 text-center backdrop-blur-sm">
+          <Package className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">No items found</h3>
+          <p className="text-slate-500 text-sm">
+            Add items to start tracking your inventory stock levels.
           </p>
         </div>
       )}
 
       {/* Restock Modal */}
       {showRestockModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold">
-                Restock {selectedItem.item_name}
-              </h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[#0a0a0c]/80 backdrop-blur-sm"
+            onClick={() => setShowRestockModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-[#121214] border border-white/10 rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-bold text-white">Restock Item</h3>
               <button
-                onClick={() => {
-                  setShowRestockModal(false);
-                  setSelectedItem(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={() => setShowRestockModal(false)}
+                className="p-2 text-slate-500 hover:text-white transition-colors"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
-
-            <form onSubmit={handleRestock} className="space-y-4">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">Current Stock:</span>
-                  <span className="font-medium">
-                    {selectedItem.quantity} {selectedItem.unit}
-                  </span>
+            <form onSubmit={handleRestock} className="space-y-6">
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                    {selectedItem.item_name}
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    Current Stock:{" "}
+                    <span className="text-white font-bold">
+                      {selectedItem.quantity} {selectedItem.unit}
+                    </span>
+                  </p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Threshold:</span>
-                  <span className="font-medium">
-                    {selectedItem.low_stock_threshold} {selectedItem.unit}
-                  </span>
+                <div className="text-3xl opacity-50">
+                  {inventoryItems.find((i) => i.type === selectedItem.item_type)
+                    ?.icon || "📦"}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Quantity to Add
                 </label>
                 <input
@@ -619,13 +563,13 @@ Threshold: ${newItemData.low_stock_threshold}`);
                   onChange={(e) =>
                     setFormData({ ...formData, quantity: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter quantity"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white text-xl font-bold focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  placeholder="0"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Notes (Optional)
                 </label>
                 <textarea
@@ -633,263 +577,35 @@ Threshold: ${newItemData.low_stock_threshold}`);
                   onChange={(e) =>
                     setFormData({ ...formData, notes: e.target.value })
                   }
+                  className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white text-sm focus:ring-2 focus:ring-purple-500/50 outline-none"
                   rows="2"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  placeholder="Supplier name, purchase order #, etc."
+                  placeholder="Supplier, Batch #, etc."
                 />
               </div>
 
-              <div className="bg-green-50 p-3 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">New Stock Level:</span>
-                  <span className="text-xl font-bold text-green-600">
-                    {selectedItem.quantity + (parseInt(formData.quantity) || 0)}{" "}
-                    {selectedItem.unit}
-                  </span>
-                </div>
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex justify-between items-center">
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                  New Stock Level
+                </span>
+                <span className="text-2xl font-bold text-white">
+                  {selectedItem.quantity + (parseInt(formData.quantity) || 0)}{" "}
+                  {selectedItem.unit}
+                </span>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowRestockModal(false)}
+                  className="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all"
                 >
                   Confirm Restock
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowRestockModal(false);
-                    setSelectedItem(null);
-                  }}
-                  className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Item Modal - NEW */}
-      {showEditItemModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold">
-                Edit {selectedItem.item_name}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowEditItemModal(false);
-                  setSelectedItem(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Item Name
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.item_name}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      item_name: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.unit}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, unit: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Low Stock Threshold
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={editFormData.low_stock_threshold}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      low_stock_threshold: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700"
-                >
-                  Update Item
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditItemModal(false);
-                    setSelectedItem(null);
-                  }}
-                  className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add New Item Modal */}
-      {showAddItemModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold">Add New Inventory Item</h3>
-              <button
-                onClick={() => setShowAddItemModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAddNewItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Item Type
-                </label>
-                <select
-                  value={newItemData.item_type}
-                  onChange={(e) =>
-                    setNewItemData({
-                      ...newItemData,
-                      item_type: e.target.value,
-                      unit:
-                        inventoryItems.find((i) => i.type === e.target.value)
-                          ?.unit || "pieces",
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  {inventoryItems.map((item) => (
-                    <option key={item.type} value={item.type}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Item Name
-                </label>
-                <input
-                  type="text"
-                  value={newItemData.item_name}
-                  onChange={(e) =>
-                    setNewItemData({
-                      ...newItemData,
-                      item_name: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., Premium Photo Paper"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Initial Quantity
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={newItemData.quantity}
-                  onChange={(e) =>
-                    setNewItemData({ ...newItemData, quantity: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit
-                </label>
-                <input
-                  type="text"
-                  value={newItemData.unit}
-                  onChange={(e) =>
-                    setNewItemData({ ...newItemData, unit: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Low Stock Threshold
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={newItemData.low_stock_threshold}
-                  onChange={(e) =>
-                    setNewItemData({
-                      ...newItemData,
-                      low_stock_threshold: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700"
-                >
-                  Add Item
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddItemModal(false)}
-                  className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
                 </button>
               </div>
             </form>
@@ -898,22 +614,19 @@ Threshold: ${newItemData.low_stock_threshold}`);
       )}
 
       {/* Tips Section */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Package className="w-5 h-5 text-green-600 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-green-900">
-              Inventory Management Tips
-            </h3>
-            <p className="text-sm text-green-800 mt-1">
-              • Restock items when they reach the threshold to avoid running out
-              <br />
-              • Regular inventory counts help maintain accuracy
-              <br />
-              • Track which items sell fastest to optimize stock levels
-              <br />• Keep emergency stock for peak seasons and events
-            </p>
-          </div>
+      <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-5 flex items-start gap-4">
+        <div className="p-2 bg-purple-500/20 rounded-lg">
+          <Info className="w-5 h-5 text-purple-400" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-purple-200 uppercase tracking-wider">
+            Inventory Intelligence
+          </h4>
+          <p className="text-xs text-purple-200/60 mt-1 leading-relaxed">
+            Monitor "Critical" health items closely. Accurate inventory tracking
+            prevents downtime during peak photobooth events and ensures you
+            never run out of premium supplies.
+          </p>
         </div>
       </div>
     </div>

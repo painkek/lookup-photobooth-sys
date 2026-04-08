@@ -2,33 +2,53 @@ import React, { useState, useEffect } from "react";
 import {
   Plus,
   Search,
-  Filter,
   Download,
   Edit,
   Trash2,
   AlertCircle,
+  X,
+  Calendar,
+  Tag,
+  TrendingDown,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+/**
+ * DarkVeil Expenses Component
+ * Aesthetic: Deep obsidian backgrounds, glassmorphism cards, glowing category accents, and refined typography.
+ */
 const categories = [
-  { value: "rental", label: "Rental", color: "bg-blue-100 text-blue-800" },
+  {
+    value: "rental",
+    label: "Rental",
+    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  },
   {
     value: "utilities",
     label: "Utilities",
-    color: "bg-yellow-100 text-yellow-800",
+    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   },
   {
     value: "supplies",
     label: "Supplies",
-    color: "bg-purple-100 text-purple-800",
+    color: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   },
   {
     value: "maintenance",
     label: "Maintenance",
-    color: "bg-orange-100 text-orange-800",
+    color: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   },
-  { value: "salary", label: "Salary", color: "bg-green-100 text-green-800" },
-  { value: "other", label: "Other", color: "bg-gray-100 text-gray-800" },
+  {
+    value: "salary",
+    label: "Salary",
+    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  },
+  {
+    value: "other",
+    label: "Other",
+    color: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  },
 ];
 
 export default function Expenses({ branch }) {
@@ -45,7 +65,6 @@ export default function Expenses({ branch }) {
     expense_date: new Date().toISOString().split("T")[0],
   });
 
-  // Fetch expenses from Supabase
   useEffect(() => {
     fetchExpenses();
   }, [branch]);
@@ -62,7 +81,6 @@ export default function Expenses({ branch }) {
 
     if (error) {
       console.error("Error fetching expenses:", error);
-      alert("Error loading expenses: " + error.message);
     } else {
       setExpenses(data || []);
     }
@@ -71,7 +89,6 @@ export default function Expenses({ branch }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const expenseData = {
       branch_id: branch.id,
       category: formData.category,
@@ -94,19 +111,7 @@ export default function Expenses({ branch }) {
       error = insertError;
     }
 
-    if (error) {
-      alert(
-        `Error ${editingExpense ? "updating" : "recording"} expense: ` +
-          error.message
-      );
-    } else {
-      alert(`Expense ${editingExpense ? "updated" : "recorded"} successfully!
-     
-Category: ${formData.category}
-Description: ${formData.description}
-Amount: ₱${parseFloat(formData.amount).toLocaleString()}
-Date: ${formData.expense_date}`);
-
+    if (!error) {
       setShowModal(false);
       setEditingExpense(null);
       setFormData({
@@ -131,155 +136,119 @@ Date: ${formData.expense_date}`);
   };
 
   const handleDelete = async (expense) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete this expense?\n\n${expense.description} - ₱${expense.amount}`
-      )
-    ) {
+    if (window.confirm(`Delete expense: ${expense.description}?`)) {
       const { error } = await supabase
         .from("expenses")
         .delete()
         .eq("id", expense.id);
-
-      if (error) {
-        alert("Error deleting expense: " + error.message);
-      } else {
-        alert("Expense deleted successfully!");
-        fetchExpenses();
-      }
+      if (!error) fetchExpenses();
     }
   };
 
-  // Calculate summary stats from real data
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
-
-  const monthlyExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.expense_date);
-    return (
-      expenseDate.getMonth() === currentMonth &&
-      expenseDate.getFullYear() === currentYear
-    );
+  const monthlyExpenses = expenses.filter((e) => {
+    const d = new Date(e.expense_date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
-
   const totalThisMonth = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const categoryTotals = {};
-  expenses.forEach((expense) => {
-    if (!categoryTotals[expense.category]) {
-      categoryTotals[expense.category] = 0;
-    }
-    categoryTotals[expense.category] += expense.amount;
-  });
-
-  const highestCategory = Object.entries(categoryTotals).sort(
-    (a, b) => b[1] - a[1]
-  )[0];
-
   const todayExpenses = expenses
     .filter((e) => e.expense_date === new Date().toISOString().split("T")[0])
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Filter expenses based on search and category
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = expense.description
+  const filteredExpenses = expenses.filter((e) => {
+    const matchesSearch = e.description
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesCategory =
-      !selectedCategory || expense.category === selectedCategory;
+      !selectedCategory || e.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading expenses...</p>
-        </div>
+      <div className="flex justify-center items-center h-96">
+        <div className="w-10 h-10 rounded-full border-2 border-red-500/20 border-b-red-500 animate-spin" />
       </div>
     );
   }
 
+  const StatCard = ({ title, value, colorClass, subtitle }) => (
+    <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-4 transition-all hover:border-white/10">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+        {title}
+      </p>
+      <p className={`text-xl font-semibold tracking-tight ${colorClass}`}>
+        ₱{value.toLocaleString()}
+      </p>
+      {subtitle && (
+        <p className="text-[10px] text-slate-600 mt-1">{subtitle}</p>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-4 md:space-y-6 px-3 md:px-0">
+    <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-white tracking-tight">
             Expenses
           </h2>
-          <p className="text-sm text-gray-600 mt-0.5">
-            Track all branch expenses for {branch.name}
+          <p className="text-slate-400">
+            Financial tracking for{" "}
+            <span className="text-red-400 font-medium">{branch.name}</span>
           </p>
         </div>
         <button
           onClick={() => {
             setEditingExpense(null);
-            setFormData({
-              category: "supplies",
-              description: "",
-              amount: "",
-              expense_date: new Date().toISOString().split("T")[0],
-            });
             setShowModal(true);
           }}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+          className="group relative inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-xl font-semibold overflow-hidden transition-all hover:bg-red-500 active:scale-95 shadow-[0_0_20px_-5px_rgba(239,68,68,0.5)]"
         >
-          <Plus className="w-4 h-4" /> Add Expense
+          <Plus className="w-4 h-4" /> Add New Expense
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 border border-gray-100">
-          <p className="text-xs text-gray-600">Total This Month</p>
-          <p className="text-lg md:text-2xl font-bold text-gray-900">
-            ₱{totalThisMonth.toLocaleString()}
+      {/* Summary Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total This Month"
+          value={totalThisMonth}
+          colorClass="text-white"
+          subtitle={`${monthlyExpenses.length} transactions`}
+        />
+        <StatCard
+          title="Today's Outflow"
+          value={todayExpenses}
+          colorClass="text-red-400"
+        />
+        <StatCard
+          title="Average Daily"
+          value={monthlyExpenses.length ? (totalThisMonth / 30).toFixed(0) : 0}
+          colorClass="text-purple-400"
+        />
+        <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-4">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 text-center">
+            Budget Health
           </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {monthlyExpenses.length} transactions
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 border border-gray-100">
-          <p className="text-xs text-gray-600">Today's Expenses</p>
-          <p className="text-lg md:text-2xl font-bold text-orange-600">
-            ₱{todayExpenses.toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 border border-gray-100">
-          <p className="text-xs text-gray-600">Highest Category</p>
-          <p className="text-base md:text-2xl font-bold text-gray-900">
-            {highestCategory
-              ? highestCategory[0].charAt(0).toUpperCase() +
-                highestCategory[0].slice(1)
-              : "None"}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {highestCategory
-              ? `₱${highestCategory[1].toLocaleString()}`
-              : "No data"}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 border border-gray-100">
-          <p className="text-xs text-gray-600">Average Daily</p>
-          <p className="text-lg md:text-2xl font-bold text-purple-600">
-            ₱{monthlyExpenses.length ? (totalThisMonth / 30).toFixed(0) : 0}
-          </p>
-          <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2 mt-2">
+          <div className="w-full bg-white/5 rounded-full h-2 relative overflow-hidden">
             <div
-              className="bg-red-600 h-1.5 md:h-2 rounded-full"
+              className="bg-red-500 h-full rounded-full transition-all duration-1000"
               style={{
                 width: `${Math.min((totalThisMonth / 50000) * 100, 100)}%`,
               }}
-            ></div>
+            />
           </div>
-          <p className="text-xs text-gray-500 mt-1">Monthly budget: ₱50,000</p>
+          <p className="text-[10px] text-slate-600 mt-2 text-center italic">
+            Limit: ₱50,000
+          </p>
         </div>
       </div>
 
       {/* Category Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {categories.map((cat) => {
           const total = expenses
             .filter(
@@ -291,34 +260,34 @@ Date: ${formData.expense_date}`);
           return (
             <div
               key={cat.value}
-              className={`${cat.color} rounded-lg p-2 md:p-3 text-center`}
+              className={`p-3 rounded-2xl border ${cat.color} transition-all hover:scale-105`}
             >
-              <p className="text-xs font-medium">{cat.label}</p>
-              <p className="text-sm md:text-lg font-bold">
-                ₱{total.toLocaleString()}
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-80">
+                {cat.label}
               </p>
+              <p className="text-sm font-bold">₱{total.toLocaleString()}</p>
             </div>
           );
         })}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-3 md:p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search expenses by description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
+      {/* Filters & Actions */}
+      <div className="bg-[#121214]/40 border border-white/5 rounded-2xl p-4 backdrop-blur-sm flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 relative group">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-red-400 transition-colors" />
+          <input
+            type="text"
+            placeholder="Search descriptions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
+          />
+        </div>
+        <div className="flex gap-3">
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            className="px-4 py-2.5 bg-[#1a1a1c] border border-white/5 rounded-xl text-sm text-slate-300 focus:ring-2 focus:ring-red-500/50 outline-none"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -327,272 +296,225 @@ Date: ${formData.expense_date}`);
               </option>
             ))}
           </select>
-          <button
-            onClick={() => {
-              setSearchTerm("");
-              setSelectedCategory("");
-            }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Clear Filters
-          </button>
-          <button className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/5 rounded-xl text-sm font-medium text-slate-300 hover:bg-white/10 transition-all">
             <Download className="w-4 h-4" /> Export
           </button>
         </div>
       </div>
 
-      {/* Mobile Card View */}
-      <div className="block md:hidden space-y-3">
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-[#121214]/40 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-sm">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-white/5 bg-white/5">
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Date
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Category
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Description
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Amount
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {filteredExpenses.map((expense) => {
+              const cat = categories.find((c) => c.value === expense.category);
+              return (
+                <tr
+                  key={expense.id}
+                  className="group hover:bg-white/5 transition-colors"
+                >
+                  <td className="px-6 py-4 text-sm text-slate-400">
+                    {expense.expense_date}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${cat?.color}`}
+                    >
+                      {cat?.label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-200">
+                    {expense.description}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-red-400">
+                    ₱{expense.amount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEdit(expense)}
+                        className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(expense)}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile View */}
+      <div className="md:hidden space-y-4">
         {filteredExpenses.map((expense) => {
-          const category = categories.find((c) => c.value === expense.category);
+          const cat = categories.find((c) => c.value === expense.category);
           return (
-            <div key={expense.id} className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex justify-between items-start mb-3">
+            <div
+              key={expense.id}
+              className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5 space-y-4"
+            >
+              <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
+                  <p className="text-sm font-bold text-white">
                     {expense.description}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">
                     {expense.expense_date}
                   </p>
                 </div>
-                <div className="flex gap-2 ml-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(expense)}
-                    className="text-green-600 hover:text-green-800 p-1"
-                    title="Edit"
+                    className="p-2 text-emerald-400/70"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(expense)}
-                    className="text-red-600 hover:text-red-800 p-1"
-                    title="Delete"
+                    className="p-2 text-red-400/70"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Category:</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${category?.color}`}
-                  >
-                    {category?.label}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Amount:</span>
-                  <span className="text-base font-bold text-red-600">
-                    ₱{expense.amount.toLocaleString()}
-                  </span>
-                </div>
+              <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${cat?.color}`}
+                >
+                  {cat?.label}
+                </span>
+                <p className="text-base font-bold text-red-400">
+                  ₱{expense.amount.toLocaleString()}
+                </p>
               </div>
             </div>
           );
         })}
-        {filteredExpenses.length === 0 && (
-          <div className="text-center py-8 text-gray-500 bg-white rounded-lg">
-            {expenses.length === 0
-              ? 'No expenses recorded yet. Click "Add Expense" to get started!'
-              : "No expenses match your filters."}
-          </div>
-        )}
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredExpenses.map((expense) => {
-                const category = categories.find(
-                  (c) => c.value === expense.category
-                );
-                return (
-                  <tr key={expense.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {expense.expense_date}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${category?.color}`}
-                      >
-                        {category?.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {expense.description}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-red-600">
-                      ₱{expense.amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="text-green-600 hover:text-green-800 transition"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense)}
-                          className="text-red-600 hover:text-red-800 transition"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredExpenses.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">
-                    {expenses.length === 0
-                      ? 'No expenses recorded yet. Click "Add Expense" to get started!'
-                      : "No expenses match your filters."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add/Edit Expense Modal - Mobile Optimized */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
-          <div className="bg-white rounded-lg p-5 max-w-md w-full my-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">
-                {editingExpense ? "Edit Expense" : "Add New Expense"}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[#0a0a0c]/80 backdrop-blur-sm"
+            onClick={() => setShowModal(false)}
+          />
+          <div className="relative w-full max-w-lg bg-[#121214] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+              <h3 className="text-xl font-bold text-white">
+                {editingExpense ? "Edit Expense" : "Add Expense"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-2 text-slate-500 hover:text-white transition-colors"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.expense_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expense_date: e.target.value })
-                  }
-                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                />
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.expense_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expense_date: e.target.value })
+                    }
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-red-500/50 outline-none"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Category
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full px-4 py-2.5 bg-[#1a1a1c] border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-red-500/50 outline-none"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Description
                 </label>
                 <textarea
-                  placeholder="Describe the expense..."
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white text-sm focus:ring-2 focus:ring-red-500/50 outline-none"
                   rows="2"
-                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
                   required
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Amount (₱)
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
-                  placeholder="Enter amount"
                   value={formData.amount}
                   onChange={(e) =>
                     setFormData({ ...formData, amount: e.target.value })
                   }
-                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white text-lg font-bold focus:ring-2 focus:ring-red-500/50 outline-none"
                   required
                 />
               </div>
-
-              {formData.amount && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total Expense:</span>
-                    <span className="text-lg font-bold text-red-600">
-                      ₱{parseFloat(formData.amount || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition text-sm"
-                >
-                  {editingExpense ? "Update Expense" : "Save Expense"}
-                </button>
+              <div className="flex gap-4 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400 transition text-sm"
+                  className="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-500/20 transition-all"
+                >
+                  {editingExpense ? "Update Expense" : "Save Expense"}
                 </button>
               </div>
             </form>
@@ -600,23 +522,20 @@ Date: ${formData.expense_date}`);
         </div>
       )}
 
-      {/* Tips Section */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold text-blue-900 text-sm md:text-base">
-              Expense Management Tips
-            </h3>
-            <p className="text-xs md:text-sm text-blue-800 mt-1">
-              • Categorize expenses accurately for better financial reporting
-              <br />
-              • Keep receipts and attach notes for future reference
-              <br />
-              • Regular expense tracking helps optimize business costs
-              <br />• Set monthly budgets for each category to control spending
-            </p>
-          </div>
+      {/* Tips */}
+      <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex items-start gap-4">
+        <div className="p-2 bg-red-500/20 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-red-400" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-red-200 uppercase tracking-wider">
+            Financial Insights
+          </h4>
+          <p className="text-xs text-red-200/60 mt-1 leading-relaxed">
+            Accurate categorization drives better reporting. Monitor the
+            "Highest Category" to identify potential cost-saving opportunities
+            and keep your branch profitable.
+          </p>
         </div>
       </div>
     </div>
