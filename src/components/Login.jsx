@@ -37,11 +37,15 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-red-900 to-red-400 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
         <div className="flex justify-center mb-6">
-          <div className="bg-red-100 p-3 rounded-full">
-            <img src="/logo.png" alt="Lookup Photobooth" />
+          <div className="bg-red-50 p-3 rounded-full">
+            <img
+              className="w-12 h-12 object-contain"
+              src="/logo.png"
+              alt="Lookup Photobooth"
+            />
           </div>
         </div>
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
@@ -105,13 +109,6 @@ export default function Login({ onLogin }) {
             <LogIn className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p className="font-medium mb-1">Branch Credentials:</p>
-          <p className="font-mono text-xs">ayala</p>
-          <p className="font-mono text-xs">tabaco</p>
-          <p className="font-mono text-xs">legazpi</p>
-        </div>
       </div>
     </div>
   );
