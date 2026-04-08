@@ -40,8 +40,8 @@ export default function Login({ onLogin }) {
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
         <div className="flex justify-center mb-6">
-          <div className="bg-purple-100 p-3 rounded-full">
-            <Camera className="w-12 h-12 text-purple-600" />
+          <div className="bg-red-100 p-3 rounded-full">
+            <img src="/logo.png" alt="Lookup Photobooth" />
           </div>
         </div>
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">

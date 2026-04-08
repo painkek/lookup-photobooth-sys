@@ -18,12 +18,12 @@ import {
 import { supabase } from "../lib/supabase";
 
 const products = [
-  { name: "Snapshot", price: 150, description: "Single photo print" },
-  { name: "Two Strips", price: 200, description: "Two photo strips" },
-  { name: "One Strip", price: 250, description: "One photo strip" },
-  { name: "Reprint", price: 100, description: "Photo reprint" },
-  { name: "Ministrips", price: 200, description: "Mini photo strips" },
-  { name: "Keychain", price: 30, description: "Photo keychain" },
+  { name: "Snapshot", price: 150, description: "Snapshot" },
+  { name: "Two Strips", price: 200, description: "Two strips" },
+  { name: "One Strip", price: 250, description: "One strip" },
+  { name: "Reprint", price: 100, description: "Reprint" },
+  { name: "Ministrips", price: 200, description: "Ministrips" },
+  { name: "Keychain", price: 30, description: "Keychain" },
 ];
 
 const errorTypes = [
