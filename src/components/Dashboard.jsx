@@ -267,24 +267,24 @@ export default function Dashboard({ branch }) {
     );
 
  const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "₱" }) => (
-  <div className="group relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-6 transition-all duration-300 hover:border-[var(--border-hover)]">
+  <div className="group relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 md:p-6 transition-all duration-300 hover:border-[var(--border-hover)]">
     <div
       className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 transition-opacity group-hover:opacity-20 ${colorClass}`}
     />
-    <div className="relative flex justify-between items-start">
-      <div className="flex flex-col min-h-[4.25rem]">
-        <p className="text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
+    <div className="relative flex justify-between items-start gap-2">
+      <div className="flex flex-col min-h-[3.5rem] md:min-h-[4.25rem] min-w-0">
+        <p className="text-[10px] md:text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
           {title}
         </p>
-        <p className="text-2xl font-semibold text-[var(--text-1)] tracking-tight mt-auto">
+        <p className="text-xl md:text-2xl font-semibold text-[var(--text-1)] tracking-tight mt-auto">
           <span className="text-[var(--text-3)] font-normal mr-0.5">
             {prefix}
           </span>
           {value.toLocaleString()}
         </p>
       </div>
-      <div className="p-2.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] text-[var(--text-2)] group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-5 h-5" />
+      <div className="flex-shrink-0 p-2 md:p-2.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] text-[var(--text-2)] group-hover:scale-110 transition-transform duration-300">
+        <Icon className="w-4 h-4 md:w-5 md:h-5" />
       </div>
     </div>
   </div>
@@ -452,15 +452,15 @@ export default function Dashboard({ branch }) {
 
         <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
           <CardHeader title="Top Products" subtitle="Revenue distribution" />
-          <div className="h-[350px] w-full">
+          <div className="h-[240px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={productSales}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
+                  innerRadius={55}
+                  outerRadius={90}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -478,19 +478,19 @@ export default function Dashboard({ branch }) {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {productSales.slice(0, 4).map((item, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: COLORS[i % COLORS.length] }}
-                  />
-                  <span className="text-[10px] text-[var(--text-2)] truncate">
-                    {item.name}
-                  </span>
-                </div>
-              ))}
-            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {productSales.slice(0, 4).map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                />
+                <span className="text-[10px] text-[var(--text-2)] truncate">
+                  {item.name}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
