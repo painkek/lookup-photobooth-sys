@@ -28,8 +28,9 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * DarkVeil Dashboard Component
- * Aesthetic: Deep obsidian backgrounds, glassmorphism cards, glowing charts, and vibrant accents.
+ * Dashboard Component — CSS-variable theming
+ * Colors come from the variables in index.css (:root = light, .dark = dark).
+ * No Tailwind dark: variants needed.
  */
 const COLORS = [
   "#a855f7", // Purple
@@ -40,21 +41,64 @@ const COLORS = [
   "#ef4444", // Red
 ];
 
-const CHART_THEME = {
-  text: "#94a3b8",
-  grid: "rgba(255, 255, 255, 0.05)",
-  tooltip: {
-    contentStyle: {
-      backgroundColor: "#121214",
-      border: "1px solid rgba(255, 255, 255, 0.1)",
-      borderRadius: "12px",
-      color: "#f1f5f9",
+// Recharts uses inline JS colors, so the chart theme is picked based
+// on the current mode (watched via the .dark class on <html>).
+const CHART_THEMES = {
+  dark: {
+    text: "#94a3b8",
+    grid: "rgba(255, 255, 255, 0.05)",
+    dotStroke: "#121214",
+    pieStroke: "rgba(0,0,0,0.2)",
+    tooltip: {
+      contentStyle: {
+        backgroundColor: "#121214",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        borderRadius: "12px",
+        color: "#f1f5f9",
+      },
+      itemStyle: { color: "#f1f5f9" },
     },
-    itemStyle: { color: "#f1f5f9" },
+  },
+  light: {
+    text: "#64748b",
+    grid: "rgba(15, 23, 42, 0.06)",
+    dotStroke: "#ffffff",
+    pieStroke: "rgba(255,255,255,0.8)",
+    tooltip: {
+      contentStyle: {
+        backgroundColor: "#ffffff",
+        border: "1px solid rgba(15, 23, 42, 0.1)",
+        borderRadius: "12px",
+        color: "#0f172a",
+      },
+      itemStyle: { color: "#0f172a" },
+    },
   },
 };
 
+// Watches the .dark class on <html> so charts re-render when the
+// theme toggle in Layout flips it.
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    );
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
+
 export default function Dashboard({ branch }) {
+  const isDark = useIsDark();
+  const CHART_THEME = isDark ? CHART_THEMES.dark : CHART_THEMES.light;
+
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState([]);
   const [expensesData, setExpensesData] = useState([]);
@@ -222,36 +266,36 @@ export default function Dashboard({ branch }) {
       </div>
     );
 
-  const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "₱" }) => (
-    <div className="group relative overflow-hidden bg-[#121214]/60 border border-white/5 rounded-2xl p-6 transition-all duration-300 hover:border-white/10 hover:bg-[#121214]/80">
-      <div
-        className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 transition-opacity group-hover:opacity-20 ${colorClass}`}
-      />
-      <div className="relative flex justify-between items-start">
-        <div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-            {title}
-          </p>
-          <p className="text-2xl font-semibold text-white tracking-tight">
-            <span className="text-slate-400 font-normal mr-0.5">{prefix}</span>
-            {value.toLocaleString()}
-          </p>
-        </div>
-        <div
-          className={`p-2.5 rounded-xl border border-white/5 bg-white/5 text-slate-300 group-hover:scale-110 transition-transform duration-300`}
-        >
-          <Icon className="w-5 h-5" />
-        </div>
+ const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "₱" }) => (
+  <div className="group relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-6 transition-all duration-300 hover:border-[var(--border-hover)]">
+    <div
+      className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 transition-opacity group-hover:opacity-20 ${colorClass}`}
+    />
+    <div className="relative flex justify-between items-start">
+      <div className="flex flex-col min-h-[4.25rem]">
+        <p className="text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
+          {title}
+        </p>
+        <p className="text-2xl font-semibold text-[var(--text-1)] tracking-tight mt-auto">
+          <span className="text-[var(--text-3)] font-normal mr-0.5">
+            {prefix}
+          </span>
+          {value.toLocaleString()}
+        </p>
+      </div>
+      <div className="p-2.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] text-[var(--text-2)] group-hover:scale-110 transition-transform duration-300">
+        <Icon className="w-5 h-5" />
       </div>
     </div>
-  );
+  </div>
+);
 
   const CardHeader = ({ title, subtitle }) => (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold text-white tracking-tight">
+      <h3 className="text-lg font-semibold text-[var(--text-1)] tracking-tight">
         {title}
       </h3>
-      {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-[var(--text-3)]">{subtitle}</p>}
     </div>
   );
 
@@ -260,21 +304,27 @@ export default function Dashboard({ branch }) {
       {/* Dashboard Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl font-bold text-[var(--text-1)] tracking-tight">
             Insights
           </h2>
-          <p className="text-slate-400">
+          <p className="text-[var(--text-2)]">
             Overview for{" "}
-            <span className="text-purple-400 font-medium">{branch.name}</span>
+            <span className="text-[var(--accent)] font-medium">
+              {branch.name}
+            </span>
           </p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all"
-        >
-          <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh Data
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchDashboardData}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-sm font-medium text-[var(--text-2)] hover:bg-[var(--chip-bg-hover)] hover:text-[var(--text-1)] transition-all"
+          >
+            <RefreshCcw
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh Data
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -335,7 +385,7 @@ export default function Dashboard({ branch }) {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+        <div className="xl:col-span-2 bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
           <CardHeader
             title="Weekly Performance"
             subtitle="Revenue vs Expenses"
@@ -382,7 +432,7 @@ export default function Dashboard({ branch }) {
                     r: 4,
                     fill: "#a855f7",
                     strokeWidth: 2,
-                    stroke: "#121214",
+                    stroke: CHART_THEME.dotStroke,
                   }}
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
@@ -400,7 +450,7 @@ export default function Dashboard({ branch }) {
           </div>
         </div>
 
-        <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+        <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
           <CardHeader title="Top Products" subtitle="Revenue distribution" />
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -418,7 +468,7 @@ export default function Dashboard({ branch }) {
                     <Cell
                       key={i}
                       fill={COLORS[i % COLORS.length]}
-                      stroke="rgba(0,0,0,0.2)"
+                      stroke={CHART_THEME.pieStroke}
                     />
                   ))}
                 </Pie>
@@ -435,7 +485,7 @@ export default function Dashboard({ branch }) {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: COLORS[i % COLORS.length] }}
                   />
-                  <span className="text-[10px] text-slate-400 truncate">
+                  <span className="text-[10px] text-[var(--text-2)] truncate">
                     {item.name}
                   </span>
                 </div>
@@ -452,14 +502,17 @@ export default function Dashboard({ branch }) {
             <AlertCircle className="w-5 h-5 text-amber-500" />
           </div>
           <div className="flex-1">
-            <h4 className="text-sm font-bold text-amber-200 uppercase tracking-wider">
+            <h4 className="text-sm font-bold text-[var(--warn-strong)] uppercase tracking-wider">
               Low Stock Warning
             </h4>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
               {lowStockAlerts.map((item) => (
-                <span key={item.id} className="text-xs text-amber-200/70">
+                <span
+                  key={item.id}
+                  className="text-xs text-[var(--warn)] opacity-80"
+                >
                   • {item.item_name}:{" "}
-                  <span className="text-amber-400 font-bold">
+                  <span className="font-bold opacity-100">
                     {item.quantity}
                   </span>{" "}
                   left
@@ -472,20 +525,20 @@ export default function Dashboard({ branch }) {
 
       {/* Lists Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+        <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
           <CardHeader title="Upcoming Bookings" />
           <div className="space-y-3">
             {upcomingBookingsList.length > 0 ? (
               upcomingBookingsList.map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+                  className="flex justify-between items-center p-4 rounded-2xl bg-[var(--inset-bg)] border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors"
                 >
                   <div>
-                    <p className="font-semibold text-slate-200">
+                    <p className="font-semibold text-[var(--text-1)]">
                       {booking.customer_name}
                     </p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                    <p className="text-xs text-[var(--text-3)] flex items-center gap-1.5 mt-0.5">
                       <Calendar className="w-3 h-3" /> {booking.date} at{" "}
                       {booking.start_time}
                     </p>
@@ -493,8 +546,8 @@ export default function Dashboard({ branch }) {
                   <span
                     className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${
                       booking.status === "confirmed"
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-amber-500/10 text-amber-400"
+                        ? "bg-emerald-500/10 text-[var(--success)]"
+                        : "bg-amber-500/10 text-[var(--warn)]"
                     }`}
                   >
                     {booking.status}
@@ -502,39 +555,38 @@ export default function Dashboard({ branch }) {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-slate-600 italic text-sm">
+              <div className="text-center py-8 text-[var(--text-3)] italic text-sm">
                 No upcoming bookings
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+        <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
           <CardHeader title="Recent Sales" />
           <div className="space-y-3">
             {recentSales.length > 0 ? (
               recentSales.map((sale) => (
                 <div
                   key={sale.id}
-                  className="flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+                  className="flex justify-between items-center p-4 rounded-2xl bg-[var(--inset-bg)] border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors"
                 >
                   <div>
-                    <p className="font-semibold text-slate-200">
+                    <p className="font-semibold text-[var(--text-1)]">
                       {sale.customer_name || "Walk-in Customer"}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {sale.product}{" "}
-                      <span className="text-slate-600 mx-1">•</span> x
+                    <p className="text-xs text-[var(--text-3)] mt-0.5">
+                      {sale.product} <span className="mx-1">•</span> x
                       {sale.quantity}
                     </p>
                   </div>
-                  <p className="font-bold text-emerald-400">
+                  <p className="font-bold text-[var(--success)]">
                     ₱{sale.total_amount.toLocaleString()}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-slate-600 italic text-sm">
+              <div className="text-center py-8 text-[var(--text-3)] italic text-sm">
                 No recent sales
               </div>
             )}

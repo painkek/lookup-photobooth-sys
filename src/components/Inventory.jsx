@@ -16,8 +16,7 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * DarkVeil Inventory Component
- * Aesthetic: Deep obsidian backgrounds, glassmorphism cards, glowing stock indicators, and vibrant status alerts.
+ * Inventory Component — CSS-variable theming
  */
 const inventoryItems = [
   {
@@ -235,10 +234,10 @@ export default function Inventory({ branch }) {
   }
 
   const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "" }) => (
-    <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5 transition-all hover:border-white/10">
+    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 transition-all hover:border-[var(--border-hover)]">
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+          <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
             {title}
           </p>
           <p className={`text-2xl font-semibold tracking-tight ${colorClass}`}>
@@ -246,8 +245,8 @@ export default function Inventory({ branch }) {
             {typeof value === "number" ? value.toLocaleString() : value}
           </p>
         </div>
-        <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-          <Icon className="w-5 h-5 text-slate-400" />
+        <div className="p-2 bg-[var(--chip-bg)] rounded-lg border border-[var(--border)]">
+          <Icon className="w-5 h-5 text-[var(--text-2)]" />
         </div>
       </div>
     </div>
@@ -258,18 +257,20 @@ export default function Inventory({ branch }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl font-bold text-[var(--text-1)] tracking-tight">
             Inventory
           </h2>
-          <p className="text-slate-400">
+          <p className="text-[var(--text-2)]">
             Stock management for{" "}
-            <span className="text-purple-400 font-medium">{branch.name}</span>
+            <span className="text-[var(--accent)] font-medium">
+              {branch.name}
+            </span>
           </p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => fetchInventory()}
-            className="p-2.5 bg-white/5 border border-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+            className="p-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--chip-bg-hover)] transition-all"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
@@ -286,8 +287,8 @@ export default function Inventory({ branch }) {
       {(lowStockItems.length > 0 || outOfStockItems.length > 0) && (
         <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <h3 className="text-sm font-bold text-red-400 uppercase tracking-widest">
+            <AlertCircle className="w-5 h-5 text-[var(--danger)]" />
+            <h3 className="text-sm font-bold text-[var(--danger)] uppercase tracking-widest">
               Critical Stock Alerts
             </h3>
           </div>
@@ -297,9 +298,9 @@ export default function Inventory({ branch }) {
                 key={item.id}
                 className="flex justify-between items-center p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
               >
-                <span className="text-sm font-bold text-red-200">
+                <span className="text-sm font-bold text-[var(--danger)]">
                   {item.item_name}{" "}
-                  <span className="text-[10px] text-red-400 ml-1 opacity-60">
+                  <span className="text-[10px] ml-1 opacity-60">
                     OUT OF STOCK
                   </span>
                 </span>
@@ -321,9 +322,9 @@ export default function Inventory({ branch }) {
                   key={item.id}
                   className="flex justify-between items-center p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl"
                 >
-                  <span className="text-sm font-bold text-amber-200">
+                  <span className="text-sm font-bold text-[var(--warn)]">
                     {item.item_name}{" "}
-                    <span className="text-[10px] text-amber-400 ml-1 opacity-60">
+                    <span className="text-[10px] ml-1 opacity-60">
                       {item.quantity} {item.unit} left
                     </span>
                   </span>
@@ -348,20 +349,20 @@ export default function Inventory({ branch }) {
           title="Total Items"
           value={totalItems}
           icon={Package}
-          colorClass="text-white"
+          colorClass="text-[var(--text-1)]"
         />
         <StatCard
           title="Total Value"
           value={totalValue}
           prefix="₱"
           icon={TrendingUp}
-          colorClass="text-emerald-400"
+          colorClass="text-[var(--success)]"
         />
         <StatCard
           title="Low Stock"
           value={lowStockItems.length}
           icon={TrendingDown}
-          colorClass="text-amber-400"
+          colorClass="text-[var(--warn)]"
         />
         <StatCard
           title="Last Restocked"
@@ -371,20 +372,20 @@ export default function Inventory({ branch }) {
               : "Never"
           }
           icon={RefreshCw}
-          colorClass="text-blue-400"
+          colorClass="text-[var(--info)]"
         />
       </div>
 
       {/* Search Bar */}
-      <div className="bg-[#121214]/40 border border-white/5 rounded-2xl p-4 backdrop-blur-sm">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-2xl p-4 backdrop-blur-sm">
         <div className="relative group">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--text-3)] group-focus-within:text-[var(--accent)] transition-colors" />
           <input
             type="text"
             placeholder="Search inventory items..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/5 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
           />
         </div>
       </div>
@@ -404,18 +405,18 @@ export default function Inventory({ branch }) {
           return (
             <div
               key={item.id}
-              className="group relative bg-[#121214]/60 border border-white/5 rounded-3xl p-6 transition-all hover:border-white/10 hover:bg-[#121214]/80"
+              className="group relative bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 transition-all hover:border-[var(--border-hover)]"
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-2xl border border-white/5 group-hover:border-purple-500/30 transition-colors">
+                  <div className="w-12 h-12 bg-[var(--chip-bg)] rounded-2xl flex items-center justify-center text-2xl border border-[var(--border)] group-hover:border-purple-500/30 transition-colors">
                     {itemInfo?.icon || "📦"}
                   </div>
                   <div>
-                    <h3 className="font-bold text-white tracking-tight">
+                    <h3 className="font-bold text-[var(--text-1)] tracking-tight">
                       {item.item_name}
                     </h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                    <p className="text-[10px] text-[var(--text-3)] uppercase tracking-widest">
                       {item.item_type.replace("_", " ")}
                     </p>
                   </div>
@@ -423,13 +424,13 @@ export default function Inventory({ branch }) {
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleEditItem(item)}
-                    className="p-2 text-slate-400 hover:text-emerald-400 transition-colors"
+                    className="p-2 text-[var(--text-3)] hover:text-[var(--success)] transition-colors"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteItem(item)}
-                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                    className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -438,30 +439,30 @@ export default function Inventory({ branch }) {
 
               <div className="space-y-5">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-3xl font-bold text-white tracking-tight">
+                  <span className="text-3xl font-bold text-[var(--text-1)] tracking-tight">
                     {item.quantity}
                   </span>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <span className="text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
                     {item.unit}
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                       Stock Health
                     </span>
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
                         isLowStock
-                          ? "bg-red-500/10 text-red-400 border-red-500/20"
-                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          ? "bg-red-500/10 text-[var(--danger)] border-red-500/20"
+                          : "bg-emerald-500/10 text-[var(--success)] border-emerald-500/20"
                       }`}
                     >
                       {isLowStock ? "Critical" : "Optimal"}
                     </span>
                   </div>
-                  <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-[var(--chip-bg)] rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-1000 ${
                         isLowStock ? "bg-red-500" : "bg-emerald-500"
@@ -469,7 +470,7 @@ export default function Inventory({ branch }) {
                       style={{ width: `${stockPercentage}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-slate-600 italic">
+                  <p className="text-[10px] text-[var(--text-3)] italic">
                     Threshold: {item.low_stock_threshold} {item.unit}
                   </p>
                 </div>
@@ -484,7 +485,7 @@ export default function Inventory({ branch }) {
                       if (newThreshold && !isNaN(newThreshold))
                         handleUpdateThreshold(item, parseInt(newThreshold));
                     }}
-                    className="flex-1 py-2 bg-white/5 border border-white/5 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                    className="flex-1 py-2 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[10px] font-bold text-[var(--text-2)] uppercase tracking-widest hover:bg-[var(--chip-bg-hover)] hover:text-[var(--text-1)] transition-all"
                   >
                     Set Threshold
                   </button>
@@ -493,7 +494,7 @@ export default function Inventory({ branch }) {
                       setSelectedItem(item);
                       setShowRestockModal(true);
                     }}
-                    className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] font-bold text-emerald-400 uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
+                    className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] font-bold text-[var(--success)] uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
                   >
                     + Restock
                   </button>
@@ -506,10 +507,12 @@ export default function Inventory({ branch }) {
 
       {/* Empty State */}
       {filteredInventory.length === 0 && (
-        <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-16 text-center backdrop-blur-sm">
-          <Package className="w-16 h-16 text-slate-700 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">No items found</h3>
-          <p className="text-slate-500 text-sm">
+        <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-16 text-center backdrop-blur-sm">
+          <Package className="w-16 h-16 text-[var(--text-3)] mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-[var(--text-1)] mb-2">
+            No items found
+          </h3>
+          <p className="text-[var(--text-3)] text-sm">
             Add items to start tracking your inventory stock levels.
           </p>
         </div>
@@ -519,28 +522,30 @@ export default function Inventory({ branch }) {
       {showRestockModal && selectedItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-[#0a0a0c]/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
             onClick={() => setShowRestockModal(false)}
           />
-          <div className="relative w-full max-w-md bg-[#121214] border border-white/10 rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-bold text-white">Restock Item</h3>
+              <h3 className="text-2xl font-bold text-[var(--text-1)]">
+                Restock Item
+              </h3>
               <button
                 onClick={() => setShowRestockModal(false)}
-                className="p-2 text-slate-500 hover:text-white transition-colors"
+                className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleRestock} className="space-y-6">
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex justify-between items-center">
+              <div className="p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl flex justify-between items-center">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
                     {selectedItem.item_name}
                   </p>
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-[var(--text-2)]">
                     Current Stock:{" "}
-                    <span className="text-white font-bold">
+                    <span className="text-[var(--text-1)] font-bold">
                       {selectedItem.quantity} {selectedItem.unit}
                     </span>
                   </p>
@@ -552,7 +557,7 @@ export default function Inventory({ branch }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Quantity to Add
                 </label>
                 <input
@@ -563,13 +568,13 @@ export default function Inventory({ branch }) {
                   onChange={(e) =>
                     setFormData({ ...formData, quantity: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white text-xl font-bold focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  className="w-full px-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-xl font-bold focus:ring-2 focus:ring-purple-500/50 outline-none"
                   placeholder="0"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Notes (Optional)
                 </label>
                 <textarea
@@ -577,17 +582,17 @@ export default function Inventory({ branch }) {
                   onChange={(e) =>
                     setFormData({ ...formData, notes: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white text-sm focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  className="w-full px-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-sm focus:ring-2 focus:ring-purple-500/50 outline-none"
                   rows="2"
                   placeholder="Supplier, Batch #, etc."
                 />
               </div>
 
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex justify-between items-center">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                <span className="text-xs font-bold text-[var(--success)] uppercase tracking-widest">
                   New Stock Level
                 </span>
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold text-[var(--text-1)]">
                   {selectedItem.quantity + (parseInt(formData.quantity) || 0)}{" "}
                   {selectedItem.unit}
                 </span>
@@ -597,7 +602,7 @@ export default function Inventory({ branch }) {
                 <button
                   type="button"
                   onClick={() => setShowRestockModal(false)}
-                  className="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors"
+                  className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
                 >
                   Cancel
                 </button>
@@ -616,13 +621,13 @@ export default function Inventory({ branch }) {
       {/* Tips Section */}
       <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-5 flex items-start gap-4">
         <div className="p-2 bg-purple-500/20 rounded-lg">
-          <Info className="w-5 h-5 text-purple-400" />
+          <Info className="w-5 h-5 text-[var(--accent)]" />
         </div>
         <div>
-          <h4 className="text-sm font-bold text-purple-200 uppercase tracking-wider">
+          <h4 className="text-sm font-bold text-[var(--accent)] uppercase tracking-wider">
             Inventory Intelligence
           </h4>
-          <p className="text-xs text-purple-200/60 mt-1 leading-relaxed">
+          <p className="text-xs text-[var(--text-2)] mt-1 leading-relaxed">
             Monitor "Critical" health items closely. Accurate inventory tracking
             prevents downtime during peak photobooth events and ensures you
             never run out of premium supplies.

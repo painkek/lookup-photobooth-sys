@@ -38,8 +38,7 @@ import {
 } from "recharts";
 
 /**
- * DarkVeil Reports Component
- * Aesthetic: Deep obsidian backgrounds, glassmorphism cards, glowing data visualizations, and refined typography.
+ * Reports Component — CSS-variable theming with theme-aware charts
  */
 const COLORS = [
   "#8b5cf6",
@@ -50,7 +49,56 @@ const COLORS = [
   "#ef4444",
 ];
 
+// Recharts uses inline JS colors, so the chart theme is picked based
+// on the current mode (watched via the .dark class on <html>).
+const CHART_THEMES = {
+  dark: {
+    tick: "#475569",
+    tickStrong: "#94a3b8",
+    grid: "#ffffff05",
+    cursor: "#ffffff05",
+    tooltip: {
+      backgroundColor: "#121214",
+      border: "1px solid #ffffff10",
+      borderRadius: "12px",
+      color: "#f1f5f9",
+    },
+  },
+  light: {
+    tick: "#94a3b8",
+    tickStrong: "#64748b",
+    grid: "rgba(15, 23, 42, 0.06)",
+    cursor: "rgba(15, 23, 42, 0.04)",
+    tooltip: {
+      backgroundColor: "#ffffff",
+      border: "1px solid rgba(15, 23, 42, 0.1)",
+      borderRadius: "12px",
+      color: "#0f172a",
+    },
+  },
+};
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    );
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
+
 export default function Reports({ branch }) {
+  const isDark = useIsDark();
+  const CT = isDark ? CHART_THEMES.dark : CHART_THEMES.light;
+
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState("monthly");
   const [dateRange, setDateRange] = useState("last30");
@@ -332,13 +380,13 @@ export default function Reports({ branch }) {
     prefix = "",
     subtext = "",
   }) => (
-    <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5 transition-all hover:border-white/10">
+    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 transition-all hover:border-[var(--border-hover)]">
       <div className="flex justify-between items-start mb-4">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
           {title}
         </p>
-        <div className="p-2 bg-white/5 rounded-lg border border-white/5">
-          <Icon className="w-4 h-4 text-slate-400" />
+        <div className="p-2 bg-[var(--chip-bg)] rounded-lg border border-[var(--border)]">
+          <Icon className="w-4 h-4 text-[var(--text-2)]" />
         </div>
       </div>
       <p className={`text-2xl font-bold tracking-tight ${colorClass}`}>
@@ -346,7 +394,7 @@ export default function Reports({ branch }) {
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
       {subtext && (
-        <p className="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-tighter">
+        <p className="text-[10px] text-[var(--text-3)] font-bold mt-1 uppercase tracking-tighter">
           {subtext}
         </p>
       )}
@@ -354,8 +402,8 @@ export default function Reports({ branch }) {
   );
 
   const ChartContainer = ({ title, children }) => (
-    <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
-      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">
+    <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
+      <h3 className="text-sm font-bold text-[var(--text-2)] uppercase tracking-widest mb-6">
         {title}
       </h3>
       <div className="h-72">{children}</div>
@@ -367,24 +415,26 @@ export default function Reports({ branch }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl font-bold text-[var(--text-1)] tracking-tight">
             Analytics
           </h2>
-          <p className="text-slate-400">
+          <p className="text-[var(--text-2)]">
             Business insights for{" "}
-            <span className="text-purple-400 font-medium">{branch.name}</span>
+            <span className="text-[var(--accent)] font-medium">
+              {branch.name}
+            </span>
           </p>
         </div>
         <button
           onClick={exportToCSV}
-          className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/5 text-white rounded-xl font-semibold transition-all hover:bg-white/10"
+          className="flex items-center gap-2 px-6 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] text-[var(--text-1)] rounded-xl font-semibold transition-all hover:bg-[var(--chip-bg-hover)]"
         >
           <Download className="w-4 h-4" /> Export Report
         </button>
       </div>
 
       {/* Filters */}
-      <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-4 flex flex-wrap gap-4 items-center">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-4 flex flex-wrap gap-4 items-center">
         <div className="flex gap-2">
           {["daily", "weekly", "monthly"].map((t) => (
             <button
@@ -393,18 +443,18 @@ export default function Reports({ branch }) {
               className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                 reportType === t
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-                  : "bg-white/5 text-slate-500 hover:text-slate-300"
+                  : "bg-[var(--chip-bg)] text-[var(--text-3)] hover:text-[var(--text-2)]"
               }`}
             >
               {t}
             </button>
           ))}
         </div>
-        <div className="h-8 w-px bg-white/5 mx-2" />
+        <div className="h-8 w-px bg-[var(--border)] mx-2" />
         <select
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value)}
-          className="bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-bold text-slate-300 uppercase tracking-widest outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="bg-[var(--select-bg)] border border-[var(--border)] rounded-xl px-4 py-2 text-[10px] font-bold text-[var(--text-2)] uppercase tracking-widest outline-none focus:ring-2 focus:ring-purple-500/50"
         >
           <option value="last7">Last 7 Days</option>
           <option value="last30">Last 30 Days</option>
@@ -412,7 +462,7 @@ export default function Reports({ branch }) {
         </select>
         <button
           onClick={fetchReportData}
-          className="ml-auto p-2 bg-purple-500/10 text-purple-400 rounded-xl hover:bg-purple-500/20 transition-all"
+          className="ml-auto p-2 bg-purple-500/10 text-[var(--accent)] rounded-xl hover:bg-purple-500/20 transition-all"
         >
           <BarChart3 className="w-5 h-5" />
         </button>
@@ -425,14 +475,14 @@ export default function Reports({ branch }) {
           value={summary.totalRevenue}
           prefix="₱"
           icon={DollarSign}
-          colorClass="text-white"
+          colorClass="text-[var(--text-1)]"
           subtext={`Walk: ₱${summary.walkinRevenue.toLocaleString()}`}
         />
         <StatCard
           title="Total Bookings"
           value={summary.totalBookings}
           icon={Calendar}
-          colorClass="text-blue-400"
+          colorClass="text-[var(--info)]"
           subtext={`Rev: ₱${summary.bookingRevenue.toLocaleString()}`}
         />
         <StatCard
@@ -440,7 +490,7 @@ export default function Reports({ branch }) {
           value={summary.netProfit}
           prefix="₱"
           icon={TrendingUp}
-          colorClass="text-emerald-400"
+          colorClass="text-[var(--success)]"
           subtext={`${summary.profitMargin.toFixed(1)}% margin`}
         />
         <StatCard
@@ -448,7 +498,7 @@ export default function Reports({ branch }) {
           value={summary.avgBookingValue}
           prefix="₱"
           icon={Users}
-          colorClass="text-purple-400"
+          colorClass="text-[var(--accent)]"
           subtext="Per customer"
         />
       </div>
@@ -469,27 +519,21 @@ export default function Reports({ branch }) {
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="#ffffff05"
+              stroke={CT.grid}
               vertical={false}
             />
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#475569", fontSize: 10 }}
+              tick={{ fill: CT.tick, fontSize: 10 }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#475569", fontSize: 10 }}
+              tick={{ fill: CT.tick, fontSize: 10 }}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#121214",
-                border: "1px solid #ffffff10",
-                borderRadius: "12px",
-              }}
-            />
+            <Tooltip contentStyle={CT.tooltip} />
             <Area
               type="monotone"
               dataKey="sales"
@@ -532,7 +576,7 @@ export default function Reports({ branch }) {
                   />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip contentStyle={CT.tooltip} />
             </PieChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -545,10 +589,10 @@ export default function Reports({ branch }) {
                 type="category"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#94a3b8", fontSize: 10 }}
+                tick={{ fill: CT.tickStrong, fontSize: 10 }}
                 width={80}
               />
-              <Tooltip cursor={{ fill: "#ffffff05" }} />
+              <Tooltip cursor={{ fill: CT.cursor }} contentStyle={CT.tooltip} />
               <Bar
                 dataKey="amount"
                 fill="#8b5cf6"
@@ -562,51 +606,51 @@ export default function Reports({ branch }) {
 
       {/* Operational Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-4">
-            <Clock className="w-5 h-5 text-orange-400" />
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <Clock className="w-5 h-5 text-orange-500" />
+            <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
               Efficiency
             </h4>
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-2xl font-bold text-[var(--text-1)]">
             {bookingStats.averageHoursPerBooking.toFixed(1)}{" "}
-            <span className="text-sm font-normal text-slate-500">
+            <span className="text-sm font-normal text-[var(--text-3)]">
               hrs/booking
             </span>
           </p>
-          <p className="text-[10px] text-slate-600 mt-1 font-bold">
+          <p className="text-[10px] text-[var(--text-3)] mt-1 font-bold">
             Total hours: {bookingStats.totalHoursBooked}
           </p>
         </div>
-        <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-4">
-            <Printer className="w-5 h-5 text-red-400" />
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <Printer className="w-5 h-5 text-[var(--danger)]" />
+            <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
               Error Rate
             </h4>
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-2xl font-bold text-[var(--text-1)]">
             {summary.totalErrors}{" "}
-            <span className="text-sm font-normal text-slate-500">
+            <span className="text-sm font-normal text-[var(--text-3)]">
               incidents
             </span>
           </p>
-          <p className="text-[10px] text-red-400/60 mt-1 font-bold">
+          <p className="text-[10px] text-[var(--danger)] opacity-70 mt-1 font-bold">
             {salesData.length > 0
               ? ((summary.totalErrors / salesData.length) * 100).toFixed(1)
               : 0}
             % of transactions
           </p>
         </div>
-        <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-4">
-            <Info className="w-5 h-5 text-blue-400" />
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <Info className="w-5 h-5 text-[var(--info)]" />
+            <h4 className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
               Insights
             </h4>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed italic">
+          <p className="text-xs text-[var(--text-2)] leading-relaxed italic">
             "Peak performance detected during monthly cycles. Consider
             optimizing weekend staffing."
           </p>

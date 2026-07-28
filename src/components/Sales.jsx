@@ -17,15 +17,14 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * DarkVeil Sales Component
- * Aesthetic: Deep obsidian backgrounds, glassmorphism tables, glowing interactive elements, and vibrant status indicators.
+ * Sales Component — CSS-variable theming
  */
 const products = [
   { name: "Snapshot", price: 150, description: "Snapshot" },
   { name: "Two Strips", price: 200, description: "Two strips" },
   { name: "One strip", price: 250, description: "One strip" },
   { name: "Reprint", price: 100, description: "Reprint" },
-  { name: "Ministrips", price: 200, description: "Ministrips" },
+  { name: "Ministrips", price: 250, description: "Ministrips" },
   { name: "Keychain", price: 30, description: "Keychain" },
 ];
 
@@ -215,8 +214,8 @@ export default function Sales({ branch }) {
   }
 
   const SummaryCard = ({ title, value, colorClass, prefix = "" }) => (
-    <div className="bg-[#121214]/60 border border-white/5 rounded-2xl p-4 transition-all hover:border-white/10">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 transition-all hover:border-[var(--border-hover)]">
+      <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
         {title}
       </p>
       <p className={`text-xl font-semibold tracking-tight ${colorClass}`}>
@@ -231,12 +230,14 @@ export default function Sales({ branch }) {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl font-bold text-[var(--text-1)] tracking-tight">
             Sales Transactions
           </h2>
-          <p className="text-slate-400">
+          <p className="text-[var(--text-2)]">
             Manage operations for{" "}
-            <span className="text-purple-400 font-medium">{branch.name}</span>
+            <span className="text-[var(--accent)] font-medium">
+              {branch.name}
+            </span>
           </p>
         </div>
         <button
@@ -245,7 +246,7 @@ export default function Sales({ branch }) {
             resetForm();
             setShowModal(true);
           }}
-          className="group relative inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-semibold overflow-hidden transition-all hover:bg-purple-500 active:scale-95 shadow-[0_0_20px_-5px_rgba(168,85,247,0.5)]"
+          className="group relative inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl font-semibold overflow-hidden transition-all hover:bg-green-500 active:scale-95 shadow-[0_0_20px_-5px_rgba(34,197,94,0.5)]"
         >
           <Plus className="w-4 h-4" /> Record New Sale
         </button>
@@ -257,111 +258,111 @@ export default function Sales({ branch }) {
           title="Today's Sales"
           value={todaySales}
           prefix="₱"
-          colorClass="text-emerald-400"
+          colorClass="text-[var(--success)]"
         />
         <SummaryCard
           title="Total Revenue"
           value={totalRevenue}
           prefix="₱"
-          colorClass="text-blue-400"
+          colorClass="text-[var(--info)]"
         />
         <SummaryCard
           title="Printing Errors"
           value={totalErrors}
-          colorClass="text-red-400"
+          colorClass="text-[var(--danger)]"
         />
         <SummaryCard
           title="Avg Transaction"
           value={sales.length ? (totalRevenue / sales.length).toFixed(0) : 0}
           prefix="₱"
-          colorClass="text-purple-400"
+          colorClass="text-[var(--accent)]"
         />
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-[#121214]/40 border border-white/5 rounded-2xl p-4 backdrop-blur-sm">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-2xl p-4 backdrop-blur-sm">
         <div className="relative group">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+          <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--text-3)] group-focus-within:text-[var(--accent)] transition-colors" />
           <input
             type="text"
             placeholder="Search transactions by customer or product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/5 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
           />
         </div>
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden md:block bg-[#121214]/40 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-sm">
+      <div className="hidden md:block bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl overflow-hidden backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-white/5 bg-white/5">
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <tr className="border-b border-[var(--border)] bg-[var(--chip-bg)]">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Date
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Customer
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Product
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest text-center">
                   Qty
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Total
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Payment
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Status
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">
+                <th className="px-6 py-4 text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest text-right">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[var(--border)]">
               {filteredSales.map((sale) => (
                 <tr
                   key={sale.id}
-                  className="group hover:bg-white/5 transition-colors"
+                  className="group hover:bg-[var(--chip-bg)] transition-colors"
                 >
-                  <td className="px-6 py-4 text-sm text-slate-400">
+                  <td className="px-6 py-4 text-sm text-[var(--text-2)]">
                     {sale.sale_date}
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-slate-200">
+                  <td className="px-6 py-4 text-sm font-semibold text-[var(--text-1)]">
                     {sale.customer_name || "Walk-in"}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-400">
+                  <td className="px-6 py-4 text-sm text-[var(--text-2)]">
                     {sale.product}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-400 text-center">
+                  <td className="px-6 py-4 text-sm text-[var(--text-2)] text-center">
                     {sale.quantity}
                   </td>
-                  <td className="px-6 py-4 text-sm font-bold text-emerald-400">
+                  <td className="px-6 py-4 text-sm font-bold text-[var(--success)]">
                     ₱{sale.total_amount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] font-bold text-slate-300 uppercase">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--chip-bg)] border border-[var(--border)] text-[10px] font-bold text-[var(--text-2)] uppercase">
                       {sale.payment_method === "gcash" ? (
-                        <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                        <CheckCircle2 className="w-3 h-3 text-[var(--info)]" />
                       ) : (
-                        <DollarSign className="w-3 h-3 text-emerald-400" />
+                        <DollarSign className="w-3 h-3 text-[var(--success)]" />
                       )}
                       {sale.payment_method}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     {sale.has_error ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 text-[10px] font-bold uppercase border border-red-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-[var(--danger)] text-[10px] font-bold uppercase border border-red-500/20">
                         <AlertTriangle className="w-3 h-3" /> Error
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-[var(--success)] text-[10px] font-bold uppercase border border-emerald-500/20">
                         Completed
                       </span>
                     )}
@@ -370,19 +371,19 @@ export default function Sales({ branch }) {
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleView(sale)}
-                        className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                        className="p-2 text-[var(--text-3)] hover:text-[var(--info)] hover:bg-blue-400/10 rounded-lg transition-all"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEdit(sale)}
-                        className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-400/10 rounded-lg transition-all"
+                        className="p-2 text-[var(--text-3)] hover:text-[var(--accent)] hover:bg-purple-400/10 rounded-lg transition-all"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(sale)}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                        className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] hover:bg-red-400/10 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -400,52 +401,52 @@ export default function Sales({ branch }) {
         {filteredSales.map((sale) => (
           <div
             key={sale.id}
-            className="bg-[#121214]/60 border border-white/5 rounded-2xl p-5 space-y-4"
+            className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 space-y-4"
           >
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-bold text-white">
+                <p className="text-sm font-bold text-[var(--text-1)]">
                   {sale.customer_name || "Walk-in"}
                 </p>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">
                   {sale.sale_date}
                 </p>
               </div>
               <div className="flex gap-1">
                 <button
                   onClick={() => handleView(sale)}
-                  className="p-2 text-slate-400"
+                  className="p-2 text-[var(--text-3)]"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleEdit(sale)}
-                  className="p-2 text-slate-400"
+                  className="p-2 text-[var(--text-3)]"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(sale)}
-                  className="p-2 text-red-400/70"
+                  className="p-2 text-[var(--danger)] opacity-70"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border)]">
               <div>
-                <p className="text-[10px] font-bold text-slate-600 uppercase">
+                <p className="text-[10px] font-bold text-[var(--text-3)] uppercase">
                   Product
                 </p>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[var(--text-2)]">
                   {sale.product} x{sale.quantity}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-600 uppercase">
+                <p className="text-[10px] font-bold text-[var(--text-3)] uppercase">
                   Total
                 </p>
-                <p className="text-sm font-bold text-emerald-400">
+                <p className="text-sm font-bold text-[var(--success)]">
                   ₱{sale.total_amount.toLocaleString()}
                 </p>
               </div>
@@ -455,20 +456,20 @@ export default function Sales({ branch }) {
       </div>
 
       {/* Product Price List */}
-      <div className="bg-[#121214]/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
-        <h3 className="text-lg font-semibold text-white mb-6">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
+        <h3 className="text-lg font-semibold text-[var(--text-1)] mb-6">
           Product Price List
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {products.map((product) => (
             <div
               key={product.name}
-              className="group p-4 bg-white/5 border border-white/5 rounded-2xl text-center hover:border-purple-500/30 hover:bg-purple-500/5 transition-all"
+              className="group p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl text-center hover:border-purple-500/30 hover:bg-purple-500/5 transition-all"
             >
-              <p className="text-xs font-bold text-slate-500 uppercase mb-2 group-hover:text-purple-400">
+              <p className="text-xs font-bold text-[var(--text-3)] uppercase mb-2 group-hover:text-[var(--accent)]">
                 {product.name}
               </p>
-              <p className="text-2xl font-bold text-white tracking-tight">
+              <p className="text-2xl font-bold text-[var(--text-1)] tracking-tight">
                 ₱{product.price}
               </p>
             </div>
@@ -480,17 +481,17 @@ export default function Sales({ branch }) {
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-[#0a0a0c]/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
             onClick={() => setShowModal(false)}
           />
-          <div className="relative w-full max-w-lg bg-[#121214] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-              <h3 className="text-xl font-bold text-white">
+          <div className="relative w-full max-w-lg bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--chip-bg)]">
+              <h3 className="text-xl font-bold text-[var(--text-1)]">
                 {editingSale ? "Edit Transaction" : "New Transaction"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 text-slate-500 hover:text-white transition-colors"
+                className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -501,7 +502,7 @@ export default function Sales({ branch }) {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                     Customer Name
                   </label>
                   <input
@@ -513,12 +514,12 @@ export default function Sales({ branch }) {
                         customer_name: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                     Date
                   </label>
                   <input
@@ -527,14 +528,14 @@ export default function Sales({ branch }) {
                     onChange={(e) =>
                       setFormData({ ...formData, sale_date: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                     Product
                   </label>
                   <select
@@ -542,7 +543,7 @@ export default function Sales({ branch }) {
                     onChange={(e) =>
                       setFormData({ ...formData, product: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[#1a1a1c] border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--select-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
                   >
                     {products.map((p) => (
                       <option key={p.name} value={p.name}>
@@ -552,7 +553,7 @@ export default function Sales({ branch }) {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                     Quantity
                   </label>
                   <input
@@ -565,14 +566,14 @@ export default function Sales({ branch }) {
                         quantity: parseInt(e.target.value),
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Payment Method
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -586,7 +587,7 @@ export default function Sales({ branch }) {
                       className={`py-2 rounded-xl border text-xs font-bold uppercase transition-all ${
                         formData.payment_method === method
                           ? "bg-purple-600 border-purple-500 text-white"
-                          : "bg-white/5 border-white/5 text-slate-500 hover:bg-white/10"
+                          : "bg-[var(--chip-bg)] border-[var(--border)] text-[var(--text-3)] hover:bg-[var(--chip-bg-hover)]"
                       }`}
                     >
                       {method}
@@ -595,13 +596,13 @@ export default function Sales({ branch }) {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/5">
+              <div className="pt-4 border-t border-[var(--border)]">
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <div
                     className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
                       formData.has_error
                         ? "bg-red-500 border-red-500"
-                        : "bg-white/5 border-white/10 group-hover:border-red-500/50"
+                        : "bg-[var(--chip-bg)] border-[var(--border-hover)] group-hover:border-red-500/50"
                     }`}
                   >
                     {formData.has_error && (
@@ -616,7 +617,7 @@ export default function Sales({ branch }) {
                       setFormData({ ...formData, has_error: e.target.checked })
                     }
                   />
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-[var(--text-2)] uppercase tracking-wider">
                     Report Printing Error
                   </span>
                 </label>
@@ -625,7 +626,7 @@ export default function Sales({ branch }) {
               {formData.has_error && (
                 <div className="space-y-4 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl animate-in slide-in-from-top-2">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-red-400 uppercase tracking-widest">
+                    <label className="text-[10px] font-bold text-[var(--danger)] uppercase tracking-widest">
                       Error Type
                     </label>
                     <select
@@ -633,7 +634,7 @@ export default function Sales({ branch }) {
                       onChange={(e) =>
                         setFormData({ ...formData, error_type: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 bg-[#1a1a1c] border border-red-500/20 rounded-xl text-white focus:ring-2 focus:ring-red-500/50 outline-none"
+                      className="w-full px-4 py-2.5 bg-[var(--select-bg)] border border-red-500/20 rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-red-500/50 outline-none"
                     >
                       <option value="">Select error type</option>
                       {errorTypes.map((e) => (
@@ -644,7 +645,7 @@ export default function Sales({ branch }) {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-red-400 uppercase tracking-widest">
+                    <label className="text-[10px] font-bold text-[var(--danger)] uppercase tracking-widest">
                       Notes
                     </label>
                     <textarea
@@ -655,18 +656,18 @@ export default function Sales({ branch }) {
                           error_notes: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2.5 bg-white/5 border border-red-500/20 rounded-xl text-white text-sm focus:ring-2 focus:ring-red-500/50 outline-none"
+                      className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-red-500/20 rounded-xl text-[var(--text-1)] text-sm focus:ring-2 focus:ring-red-500/50 outline-none"
                       rows="2"
                     />
                   </div>
                 </div>
               )}
 
-              <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex justify-between items-center">
-                <span className="text-sm font-bold text-purple-300 uppercase tracking-wider">
+              <div className="p-4 bg-green-500/10 border border-black-500/30 rounded-2xl flex justify-between items-center">
+                <span className="text-sm font-bold text  uppercase tracking-wider">
                   Total Amount
                 </span>
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold text-[var(--text-1)]">
                   ₱
                   {(
                     products.find((p) => p.name === formData.product).price *
@@ -679,13 +680,13 @@ export default function Sales({ branch }) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors"
+                  className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
                 >
                   {editingSale ? "Update Record" : "Complete Transaction"}
                 </button>
@@ -699,18 +700,18 @@ export default function Sales({ branch }) {
       {showViewModal && viewingSale && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-[#0a0a0c]/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
             onClick={() => setShowViewModal(false)}
           />
-          <div className="relative w-full max-w-md bg-[#121214] border border-white/10 rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <PackageIcon className="w-8 h-8 text-purple-400" />
+                <PackageIcon className="w-8 h-8 text-[var(--accent)]" />
               </div>
-              <h3 className="text-2xl font-bold text-white">
+              <h3 className="text-2xl font-bold text-[var(--text-1)]">
                 Transaction Details
               </h3>
-              <p className="text-slate-500 text-sm">
+              <p className="text-[var(--text-3)] text-sm">
                 Receipt for {viewingSale.customer_name || "Walk-in"}
               </p>
             </div>
@@ -731,13 +732,13 @@ export default function Sales({ branch }) {
               ].map((item, i) => (
                 <div
                   key={i}
-                  className="flex justify-between items-center py-2 border-b border-white/5"
+                  className="flex justify-between items-center py-2 border-b border-[var(--border)]"
                 >
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                  <span className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                     {item.label}
                   </span>
                   <span
-                    className={`text-sm font-medium text-slate-200 ${
+                    className={`text-sm font-medium text-[var(--text-1)] ${
                       item.class || ""
                     }`}
                   >
@@ -746,10 +747,10 @@ export default function Sales({ branch }) {
                 </div>
               ))}
               <div className="flex justify-between items-center py-4">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-xs font-bold text-[var(--text-2)] uppercase tracking-widest">
                   Total Amount
                 </span>
-                <span className="text-3xl font-bold text-emerald-400">
+                <span className="text-3xl font-bold text-[var(--success)]">
                   ₱{viewingSale.total_amount.toLocaleString()}
                 </span>
               </div>
@@ -757,17 +758,21 @@ export default function Sales({ branch }) {
 
             {viewingSale.has_error && (
               <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-                <p className="text-xs font-bold text-red-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                <p className="text-xs font-bold text-[var(--danger)] uppercase tracking-widest flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-3.5 h-3.5" /> Printing Error
                   Reported
                 </p>
-                <p className="text-sm text-red-200/80">
-                  <span className="text-red-400/60 font-medium">Type:</span>{" "}
+                <p className="text-sm text-[var(--text-2)]">
+                  <span className="text-[var(--danger)] opacity-70 font-medium">
+                    Type:
+                  </span>{" "}
                   {viewingSale.error_type}
                 </p>
                 {viewingSale.error_notes && (
-                  <p className="text-sm text-red-200/80 mt-1">
-                    <span className="text-red-400/60 font-medium">Notes:</span>{" "}
+                  <p className="text-sm text-[var(--text-2)] mt-1">
+                    <span className="text-[var(--danger)] opacity-70 font-medium">
+                      Notes:
+                    </span>{" "}
                     {viewingSale.error_notes}
                   </p>
                 )}
@@ -780,7 +785,7 @@ export default function Sales({ branch }) {
                   setShowViewModal(false);
                   handleEdit(viewingSale);
                 }}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-sm transition-all border border-white/10"
+                className="flex-1 py-3 bg-[var(--chip-bg)] hover:bg-[var(--chip-bg-hover)] text-[var(--text-1)] rounded-xl font-bold text-sm transition-all border border-[var(--border-hover)]"
               >
                 Edit Record
               </button>

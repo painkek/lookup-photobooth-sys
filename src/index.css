@@ -1,1 +1,56 @@
 @import "tailwindcss";
+
+/* ===== Theme variables (light = default, .dark overrides) ===== */
+:root {
+  --page-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --card-bg: #ffffff;
+  --inset-bg: #f8fafc;
+  --chip-bg: #f1f5f9;
+  --chip-bg-hover: #e2e8f0;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --text-1: #0f172a;   /* headings */
+  --text-2: #64748b;   /* body */
+  --text-3: #94a3b8;   /* muted */
+ --accent: #F54927;   /* was #9333ea — green-600 */
+  --success: #059669;
+  --warn: #d97706;
+  --warn-strong: #b45309;
+  --info: #2563eb;
+  --danger: #dc2626;
+  --pink: #db2777;
+   --header-bg: rgba(255, 255, 255, 0.8);
+  --nav-pill-bg: rgba(255, 255, 255, 0.9);
+  --logo-chip: #ffffff;
+   --modal-bg: #ffffff;
+  --select-bg: #ffffff;
+  --overlay: rgba(15, 23, 42, 0.4);
+}
+
+.dark {
+  --page-bg: #0a0a0c;
+  --panel-bg: rgba(18, 18, 20, 0.4);
+  --card-bg: rgba(18, 18, 20, 0.6);
+  --inset-bg: rgba(255, 255, 255, 0.05);
+  --chip-bg: rgba(255, 255, 255, 0.05);
+  --chip-bg-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(255, 255, 255, 0.1);
+  --text-1: #ffffff;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  --accent: #F87C63;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --warn-strong: #fde68a;
+  --info: #60a5fa;
+  --danger: #f87171;
+  --pink: #f472b6;
+  --header-bg: rgba(10, 10, 12, 0.8);
+  --nav-pill-bg: rgba(18, 18, 20, 0.9);
+  --logo-chip: #121214;
+  --modal-bg: #121214;
+  --select-bg: #1a1a1c;
+  --overlay: rgba(10, 10, 12, 0.8);
+}
