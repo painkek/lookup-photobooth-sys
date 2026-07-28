@@ -234,23 +234,25 @@ export default function Inventory({ branch }) {
   }
 
   const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "" }) => (
-    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 transition-all hover:border-[var(--border-hover)]">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
-            {title}
-          </p>
-          <p className={`text-2xl font-semibold tracking-tight ${colorClass}`}>
-            {prefix}
-            {typeof value === "number" ? value.toLocaleString() : value}
-          </p>
-        </div>
-        <div className="p-2 bg-[var(--chip-bg)] rounded-lg border border-[var(--border)]">
-          <Icon className="w-5 h-5 text-[var(--text-2)]" />
-        </div>
+  <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 md:p-5 transition-all hover:border-[var(--border-hover)]">
+    <div className="flex justify-between items-start gap-2">
+      <div className="flex flex-col min-h-[3.25rem] min-w-0">
+        <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
+          {title}
+        </p>
+        <p
+          className={`text-lg md:text-2xl font-semibold tracking-tight mt-auto truncate ${colorClass}`}
+        >
+          {prefix}
+          {typeof value === "number" ? value.toLocaleString() : value}
+        </p>
+      </div>
+      <div className="flex-shrink-0 p-2 bg-[var(--chip-bg)] rounded-lg border border-[var(--border)]">
+        <Icon className="w-4 h-4 md:w-5 md:h-5 text-[var(--text-2)]" />
       </div>
     </div>
-  );
+  </div>
+);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">

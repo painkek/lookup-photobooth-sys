@@ -331,12 +331,15 @@ export default function Schedule({ branch }) {
         </div>
 
         <div className="grid grid-cols-7 gap-px bg-[var(--border)] border border-[var(--border)] rounded-2xl overflow-hidden">
-          {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
             <div
-              key={d}
-              className="bg-[var(--chip-bg)] py-3 text-center text-[10px] font-bold text-[var(--text-3)] tracking-widest"
+              key={idx}
+              className="bg-[var(--chip-bg)] py-2 md:py-3 text-center text-[10px] font-bold text-[var(--text-3)] tracking-widest"
             >
-              {d}
+              <span className="md:hidden">{d}</span>
+              <span className="hidden md:inline">
+                {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][idx]}
+              </span>
             </div>
           ))}
           {getDaysInMonth(currentMonth).map((date, i) => {
@@ -350,7 +353,7 @@ export default function Schedule({ branch }) {
             return (
               <div
                 key={i}
-                className={`min-h-[100px] p-2 bg-[var(--card-bg)] transition-colors ${
+                className={`min-h-[52px] md:min-h-[100px] p-1 md:p-2 bg-[var(--card-bg)] transition-colors ${
                   date
                     ? "hover:bg-[var(--chip-bg)] cursor-pointer"
                     : "opacity-20"
@@ -360,22 +363,43 @@ export default function Schedule({ branch }) {
                 {date && (
                   <>
                     <span
-                      className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold ${
+                      className={`inline-flex w-6 h-6 md:w-7 md:h-7 items-center justify-center rounded-full text-[11px] md:text-xs font-bold ${
                         isToday
-                          ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                          ? "bg-green-600 text-white shadow-lg shadow-green-500/30"
                           : "text-[var(--text-3)]"
                       }`}
                     >
                       {date.getDate()}
                     </span>
-                    <div className="mt-2 space-y-1">
+
+                    {/* Mobile: compact dots */}
+                    <div className="mt-1 flex flex-wrap items-center gap-1 md:hidden">
+                      {dayBookings.slice(0, 3).map((b) => (
+                        <span
+                          key={b.id}
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            b.booking_type === "popup"
+                              ? "bg-cyan-500"
+                              : "bg-green-500"
+                          }`}
+                        />
+                      ))}
+                      {dayBookings.length > 3 && (
+                        <span className="text-[8px] font-bold text-[var(--text-3)]">
+                          +{dayBookings.length - 3}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Desktop: full chips */}
+                    <div className="mt-2 space-y-1 hidden md:block">
                       {dayBookings.slice(0, 2).map((b) => (
                         <div
                           key={b.id}
                           className={`px-2 py-1 rounded-lg border text-[10px] font-bold truncate ${
                             b.booking_type === "popup"
                               ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-600"
-                              : "bg-purple-500/10 border-purple-500/20 text-[var(--accent)]"
+                              : "bg-green-500/10 border-green-500/20 text-[var(--accent)]"
                           }`}
                         >
                           {b.booking_type === "popup"

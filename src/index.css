@@ -61,4 +61,6 @@ input[type="time"] {
   appearance: none;
   min-width: 0;
   min-height: 2.75rem; /* keeps tap target comfortable after stripping */
+  
 }
+
