@@ -28,12 +28,11 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * Dashboard Component — CSS-variable theming
- * Colors come from the variables in index.css (:root = light, .dark = dark).
- * No Tailwind dark: variants needed.
+ * Dashboard Component — CSS-variable theming (green accent)
+ * Mobile-optimized stat cards + charts.
  */
 const COLORS = [
-  "#a855f7", // Purple
+  "#22c55e", // Green
   "#ec4899", // Pink
   "#f59e0b", // Amber
   "#10b981", // Emerald
@@ -255,40 +254,41 @@ export default function Dashboard({ branch }) {
     .filter((b) => b.date >= new Date().toISOString().split("T")[0])
     .slice(0, 5);
   const recentSales = salesData.slice(0, 5);
+  const todayProfit = stats.todaySales - stats.todayExpenses;
 
   if (loading)
     return (
       <div className="flex justify-center items-center h-96">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin"></div>
-          <div className="absolute inset-0 w-12 h-12 rounded-full border border-purple-500/10 blur-sm"></div>
+          <div className="w-12 h-12 rounded-full border-2 border-green-500/20 border-b-green-500 animate-spin"></div>
+          <div className="absolute inset-0 w-12 h-12 rounded-full border border-green-500/10 blur-sm"></div>
         </div>
       </div>
     );
 
- const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "₱" }) => (
-  <div className="group relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 md:p-6 transition-all duration-300 hover:border-[var(--border-hover)]">
-    <div
-      className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 transition-opacity group-hover:opacity-20 ${colorClass}`}
-    />
-    <div className="relative flex justify-between items-start gap-2">
-      <div className="flex flex-col min-h-[3.5rem] md:min-h-[4.25rem] min-w-0">
-        <p className="text-[10px] md:text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
-          {title}
-        </p>
-        <p className="text-xl md:text-2xl font-semibold text-[var(--text-1)] tracking-tight mt-auto">
-          <span className="text-[var(--text-3)] font-normal mr-0.5">
-            {prefix}
-          </span>
-          {value.toLocaleString()}
-        </p>
-      </div>
-      <div className="flex-shrink-0 p-2 md:p-2.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] text-[var(--text-2)] group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-4 h-4 md:w-5 md:h-5" />
+  const StatCard = ({ title, value, icon: Icon, colorClass, prefix = "₱" }) => (
+    <div className="group relative overflow-hidden bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 md:p-6 transition-all duration-300 hover:border-[var(--border-hover)]">
+      <div
+        className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 transition-opacity group-hover:opacity-20 ${colorClass}`}
+      />
+      <div className="relative flex justify-between items-start gap-2">
+        <div className="flex flex-col min-h-[3.5rem] md:min-h-[4.25rem] min-w-0">
+          <p className="text-[10px] md:text-xs font-bold text-[var(--text-3)] uppercase tracking-widest">
+            {title}
+          </p>
+          <p className="text-xl md:text-2xl font-semibold text-[var(--text-1)] tracking-tight mt-auto truncate">
+            <span className="text-[var(--text-3)] font-normal mr-0.5">
+              {prefix}
+            </span>
+            {value.toLocaleString()}
+          </p>
+        </div>
+        <div className="flex-shrink-0 p-2 md:p-2.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] text-[var(--text-2)] group-hover:scale-110 transition-transform duration-300">
+          <Icon className="w-4 h-4 md:w-5 md:h-5" />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 
   const CardHeader = ({ title, subtitle }) => (
     <div className="mb-6">
@@ -336,6 +336,12 @@ export default function Dashboard({ branch }) {
           colorClass="bg-emerald-500"
         />
         <StatCard
+          title="Today's Profit"
+          value={todayProfit}
+          icon={DollarSign}
+          colorClass={todayProfit >= 0 ? "bg-emerald-500" : "bg-red-500"}
+        />
+        <StatCard
           title="Weekly Sales"
           value={stats.weekSales}
           icon={DollarSign}
@@ -345,14 +351,7 @@ export default function Dashboard({ branch }) {
           title="Monthly Sales"
           value={stats.monthSales}
           icon={TrendingUp}
-          colorClass="bg-purple-500"
-        />
-        <StatCard
-          title="Transactions"
-          value={stats.totalTransactions}
-          icon={ShoppingBag}
-          colorClass="bg-pink-500"
-          prefix=""
+          colorClass="bg-green-500"
         />
         <StatCard
           title="Today's Expenses"
@@ -375,10 +374,10 @@ export default function Dashboard({ branch }) {
           prefix=""
         />
         <StatCard
-          title="Low Stock"
-          value={stats.lowStockItems}
-          icon={Package}
-          colorClass="bg-amber-500"
+          title="Transactions"
+          value={stats.totalTransactions}
+          icon={ShoppingBag}
+          colorClass="bg-pink-500"
           prefix=""
         />
       </div>
@@ -390,13 +389,13 @@ export default function Dashboard({ branch }) {
             title="Weekly Performance"
             subtitle="Revenue vs Expenses"
           />
-          <div className="h-[350px] w-full">
+          <div className="h-[260px] md:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weeklyPerformance}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -425,12 +424,12 @@ export default function Dashboard({ branch }) {
                 <Line
                   type="monotone"
                   dataKey="sales"
-                  stroke="#a855f7"
+                  stroke="#22c55e"
                   name="Sales"
                   strokeWidth={3}
                   dot={{
                     r: 4,
-                    fill: "#a855f7",
+                    fill: "#22c55e",
                     strokeWidth: 2,
                     stroke: CHART_THEME.dotStroke,
                   }}
