@@ -91,7 +91,7 @@ export default function Login({ onLogin }) {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   className="w-full px-4 py-3 bg-[var(--chip-bg)] border border-[var(--border-hover)] rounded-xl text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all duration-300"
-                  placeholder="ayala, tabaco, or legazpi"
+                  placeholder="branch"
                   required
                 />
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-600/0 via-purple-600/0 to-indigo-600/0 group-focus-within:from-purple-600/5 group-focus-within:via-purple-600/5 group-focus-within:to-indigo-600/5 pointer-events-none transition-all duration-500" />

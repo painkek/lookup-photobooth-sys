@@ -6,6 +6,7 @@ import {
   Search,
   Edit,
   Trash2,
+  Ban,
   Eye,
   Clock,
   User,
@@ -14,13 +15,20 @@ import {
   MapPin,
   X,
   CheckCircle2,
+  AlertTriangle,
   Info,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 /**
- * Schedule Component — CSS-variable theming
+ * Schedule Component — Module 1: identity + audit trail
  * Standard 3-hour bookings + multi-day pop-up events.
+ *
+ * Note: `status` (pending/confirmed/cancelled/completed) is a business
+ * state the booking already tracks — "cancelled" means the customer
+ * cancelled, and stays visible. Void/Remove below is a different thing:
+ * correcting a mistaken entry (wrong booking, duplicate). Staff void
+ * (reason required, row kept); managers/owners soft-delete.
  */
 const eventTypes = [
   { value: "birthday", label: "Birthday", icon: "🎂" },
@@ -89,7 +97,7 @@ const selectCls =
 const label =
   "text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest";
 
-export default function Schedule({ branch }) {
+export default function Schedule({ branch, staff }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -100,6 +108,13 @@ export default function Schedule({ branch }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [totalPrice, setTotalPrice] = useState(8500);
   const [formData, setFormData] = useState(emptyForm);
+  const [voidTarget, setVoidTarget] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidBusy, setVoidBusy] = useState(false);
+
+  // Managers and owners may remove a booking outright (soft delete).
+  // Staff may only void — the row stays, flagged, with a reason.
+  const canDelete = staff?.role === "owner" || staff?.role === "manager";
 
   useEffect(() => {
     if (branch?.id) fetchBookings();
@@ -129,6 +144,8 @@ export default function Schedule({ branch }) {
       .from("schedules")
       .select("*")
       .eq("branch_id", branch.id)
+      .eq("is_deleted", false)
+      .is("voided_at", null)
       .order("date")
       .order("start_time");
     if (!error) setBookings(data || []);
@@ -154,13 +171,17 @@ export default function Schedule({ branch }) {
     if (editingBooking) {
       const { error: err } = await supabase
         .from("schedules")
-        .update(bookingData)
+        .update({
+          ...bookingData,
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", editingBooking.id);
       error = err;
     } else {
       const { error: err } = await supabase
         .from("schedules")
-        .insert([bookingData]);
+        .insert([{ ...bookingData, created_by: staff?.id || null }]);
       error = err;
     }
     if (error) {
@@ -192,11 +213,39 @@ export default function Schedule({ branch }) {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Delete booking?")) {
-      const { error } = await supabase.from("schedules").delete().eq("id", id);
-      if (!error) fetchBookings();
+  // Void (staff) or soft delete (manager/owner) — both keep the row and
+  // both fire the audit trigger, which pushes a notification.
+  const confirmVoid = async () => {
+    if (!voidReason.trim()) return;
+    setVoidBusy(true);
+
+    const payload = canDelete
+      ? {
+          is_deleted: true,
+          void_reason: voidReason.trim(),
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          voided_at: new Date().toISOString(),
+          voided_by: staff?.id || null,
+          void_reason: voidReason.trim(),
+        };
+
+    const { error } = await supabase
+      .from("schedules")
+      .update(payload)
+      .eq("id", voidTarget.id);
+
+    setVoidBusy(false);
+
+    if (error) {
+      alert("Could not complete: " + error.message);
+      return;
     }
+    setVoidTarget(null);
+    setVoidReason("");
+    fetchBookings();
   };
 
   const formatDateForInput = (date) => date.toISOString().split("T")[0];
@@ -508,10 +557,18 @@ export default function Schedule({ branch }) {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(b.id)}
+                    onClick={() => {
+                      setVoidTarget(b);
+                      setVoidReason("");
+                    }}
                     className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] hover:bg-red-400/10 rounded-lg transition-all"
+                    title={canDelete ? "Remove booking" : "Void booking"}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {canDelete ? (
+                      <Trash2 className="w-4 h-4" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -529,9 +586,16 @@ export default function Schedule({ branch }) {
           />
           <div className="relative w-full max-w-2xl bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--chip-bg)]">
-              <h3 className="text-xl font-bold text-[var(--text-1)]">
-                {editingBooking ? "Edit Booking" : "New Booking"}
-              </h3>
+              <div>
+                <h3 className="text-xl font-bold text-[var(--text-1)]">
+                  {editingBooking ? "Edit Booking" : "New Booking"}
+                </h3>
+                {staff && (
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-0.5">
+                    Recording as {staff.name}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowModal(false)}
                 className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
@@ -727,6 +791,78 @@ export default function Schedule({ branch }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Void / Remove Modal — reason is mandatory */}
+      {voidTarget && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setVoidTarget(null)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-500/15 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-[var(--danger)]" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-1)]">
+                {canDelete ? "Remove Booking" : "Void Booking"}
+              </h3>
+            </div>
+
+            <div className="p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl mb-5">
+              <p className="text-sm font-semibold text-[var(--text-1)]">
+                {voidTarget.customer_name}
+              </p>
+              <p className="text-xs text-[var(--text-3)] mt-0.5">
+                {voidTarget.date}
+                {voidTarget.end_date && voidTarget.end_date !== voidTarget.date
+                  ? ` → ${voidTarget.end_date}`
+                  : ""}{" "}
+                · ₱{Number(voidTarget.total_amount || 0).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="space-y-1.5 mb-6">
+              <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                Reason (required)
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                rows="3"
+                autoFocus
+                placeholder="e.g. duplicate entry, wrong date entered"
+                className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-sm placeholder:text-[var(--text-3)] focus:ring-2 focus:ring-red-500/50 outline-none"
+              />
+              <p className="text-[10px] text-[var(--text-3)]">
+                Use "Cancelled" status for a customer cancelling — this is for
+                correcting a mistaken entry. The record is kept and logged
+                under {staff?.name || "your account"}.
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setVoidTarget(null)}
+                className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmVoid}
+                disabled={!voidReason.trim() || voidBusy}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-500/20"
+              >
+                {voidBusy
+                  ? "Working..."
+                  : canDelete
+                  ? "Remove Booking"
+                  : "Void Booking"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -5,7 +5,9 @@ import {
   Download,
   Edit,
   Trash2,
+  Ban,
   AlertCircle,
+  AlertTriangle,
   X,
   Calendar,
   Tag,
@@ -15,7 +17,10 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * Expenses Component — CSS-variable theming
+ * Expenses Component — Module 1: identity + audit trail
+ * - Every record stamps created_by / updated_by (staff on shift)
+ * - Staff VOID (reason required, row kept); managers/owners soft-delete
+ * - Voided and deleted rows are excluded from all lists and totals
  */
 const categories = [
   {
@@ -50,19 +55,26 @@ const categories = [
   },
 ];
 
-export default function Expenses({ branch }) {
+export default function Expenses({ branch, staff }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [voidTarget, setVoidTarget] = useState(null); // expense being voided/removed
+  const [voidReason, setVoidReason] = useState("");
+  const [voidBusy, setVoidBusy] = useState(false);
   const [formData, setFormData] = useState({
     category: "supplies",
     description: "",
     amount: "",
     expense_date: new Date().toISOString().split("T")[0],
   });
+
+  // Managers and owners may remove a record outright (soft delete).
+  // Staff may only void — the row stays, flagged, with a reason.
+  const canDelete = staff?.role === "owner" || staff?.role === "manager";
 
   useEffect(() => {
     fetchExpenses();
@@ -74,6 +86,8 @@ export default function Expenses({ branch }) {
       .from("expenses")
       .select("*")
       .eq("branch_id", branch.id)
+      .eq("is_deleted", false)
+      .is("voided_at", null)
       .order("expense_date", { ascending: false });
 
     const { data, error } = await query;
@@ -100,13 +114,17 @@ export default function Expenses({ branch }) {
     if (editingExpense) {
       const { error: updateError } = await supabase
         .from("expenses")
-        .update(expenseData)
+        .update({
+          ...expenseData,
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", editingExpense.id);
       error = updateError;
     } else {
       const { error: insertError } = await supabase
         .from("expenses")
-        .insert([expenseData]);
+        .insert([{ ...expenseData, created_by: staff?.id || null }]);
       error = insertError;
     }
 
@@ -134,14 +152,39 @@ export default function Expenses({ branch }) {
     setShowModal(true);
   };
 
-  const handleDelete = async (expense) => {
-    if (window.confirm(`Delete expense: ${expense.description}?`)) {
-      const { error } = await supabase
-        .from("expenses")
-        .delete()
-        .eq("id", expense.id);
-      if (!error) fetchExpenses();
+  // Void (staff) or soft delete (manager/owner) — both keep the row and
+  // both fire the audit trigger, which pushes a notification.
+  const confirmVoid = async () => {
+    if (!voidReason.trim()) return;
+    setVoidBusy(true);
+
+    const payload = canDelete
+      ? {
+          is_deleted: true,
+          void_reason: voidReason.trim(),
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          voided_at: new Date().toISOString(),
+          voided_by: staff?.id || null,
+          void_reason: voidReason.trim(),
+        };
+
+    const { error } = await supabase
+      .from("expenses")
+      .update(payload)
+      .eq("id", voidTarget.id);
+
+    setVoidBusy(false);
+
+    if (error) {
+      alert("Could not complete: " + error.message);
+      return;
     }
+    setVoidTarget(null);
+    setVoidReason("");
+    fetchExpenses();
   };
 
   const currentMonth = new Date().getMonth();
@@ -354,14 +397,23 @@ export default function Expenses({ branch }) {
                       <button
                         onClick={() => handleEdit(expense)}
                         className="p-2 text-[var(--text-3)] hover:text-[var(--success)] hover:bg-emerald-400/10 rounded-lg transition-all"
+                        title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(expense)}
+                        onClick={() => {
+                          setVoidTarget(expense);
+                          setVoidReason("");
+                        }}
                         className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] hover:bg-red-400/10 rounded-lg transition-all"
+                        title={canDelete ? "Remove record" : "Void expense"}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {canDelete ? (
+                          <Trash2 className="w-4 h-4" />
+                        ) : (
+                          <Ban className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -398,10 +450,17 @@ export default function Expenses({ branch }) {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(expense)}
+                    onClick={() => {
+                      setVoidTarget(expense);
+                      setVoidReason("");
+                    }}
                     className="p-2 text-[var(--danger)] opacity-70"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {canDelete ? (
+                      <Trash2 className="w-4 h-4" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -420,7 +479,7 @@ export default function Expenses({ branch }) {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
@@ -429,9 +488,16 @@ export default function Expenses({ branch }) {
           />
           <div className="relative w-full max-w-lg bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--chip-bg)]">
-              <h3 className="text-xl font-bold text-[var(--text-1)]">
-                {editingExpense ? "Edit Expense" : "Add Expense"}
-              </h3>
+              <div>
+                <h3 className="text-xl font-bold text-[var(--text-1)]">
+                  {editingExpense ? "Edit Expense" : "Add Expense"}
+                </h3>
+                {staff && (
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-0.5">
+                    Recording as {staff.name}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowModal(false)}
                 className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
@@ -519,6 +585,74 @@ export default function Expenses({ branch }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Void / Remove Modal — reason is mandatory */}
+      {voidTarget && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setVoidTarget(null)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-500/15 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-[var(--danger)]" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-1)]">
+                {canDelete ? "Remove Record" : "Void Expense"}
+              </h3>
+            </div>
+
+            <div className="p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl mb-5">
+              <p className="text-sm font-semibold text-[var(--text-1)]">
+                {voidTarget.description}
+              </p>
+              <p className="text-xs text-[var(--text-3)] mt-0.5">
+                {voidTarget.expense_date} · ₱
+                {voidTarget.amount.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="space-y-1.5 mb-6">
+              <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                Reason (required)
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                rows="3"
+                autoFocus
+                placeholder="e.g. entered twice, wrong amount, wrong category"
+                className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-sm placeholder:text-[var(--text-3)] focus:ring-2 focus:ring-red-500/50 outline-none"
+              />
+              <p className="text-[10px] text-[var(--text-3)]">
+                The record is kept and excluded from totals. This action is
+                logged under {staff?.name || "your account"}.
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setVoidTarget(null)}
+                className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmVoid}
+                disabled={!voidReason.trim() || voidBusy}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-500/20"
+              >
+                {voidBusy
+                  ? "Working..."
+                  : canDelete
+                  ? "Remove Record"
+                  : "Void Expense"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -13,8 +13,6 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -30,6 +28,14 @@ import { supabase } from "../lib/supabase";
 /**
  * Dashboard Component — CSS-variable theming (green accent)
  * Mobile-optimized stat cards + charts.
+ *
+ * Module 1 role scoping:
+ * - staff: dashboard QUERIES only today's rows (not just hides cards —
+ *   the full history never reaches the browser). No weekly/monthly
+ *   totals, no profit, no trend chart.
+ * - manager/owner-if-landed-here: unchanged, full branch history.
+ * - All roles: voided/deleted rows excluded from every total (bug fix —
+ *   this file was never updated when Module 1 added void/delete).
  */
 const COLORS = [
   "#22c55e", // Green
@@ -94,18 +100,22 @@ function useIsDark() {
   return isDark;
 }
 
-export default function Dashboard({ branch }) {
+export default function Dashboard({ branch, staff }) {
   const isDark = useIsDark();
   const CHART_THEME = isDark ? CHART_THEMES.dark : CHART_THEMES.light;
 
+  // Staff get a today-only dashboard — no branch-wide financial history
+  // ever leaves the database for their session. Manager (and owner, if
+  // they ever land on this component instead of the Owner Overview) get
+  // the full picture, same as before.
+  const isStaffView = staff?.role === "staff";
+
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState([]);
-  const [expensesData, setExpensesData] = useState([]);
   const [bookingsData, setBookingsData] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
   const [productSales, setProductSales] = useState([]);
   const [weeklyPerformance, setWeeklyPerformance] = useState([]);
-  const [errorData, setErrorData] = useState([]);
   const [stats, setStats] = useState({
     todaySales: 0,
     weekSales: 0,
@@ -121,7 +131,7 @@ export default function Dashboard({ branch }) {
 
   useEffect(() => {
     if (branch?.id) fetchDashboardData();
-  }, [branch]);
+  }, [branch, isStaffView]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -132,114 +142,177 @@ export default function Dashboard({ branch }) {
     monthAgo.setDate(monthAgo.getDate() - 30);
 
     try {
-      const { data: sales } = await supabase
-        .from("sales")
-        .select("*")
-        .eq("branch_id", branch.id);
-      const { data: expenses } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("branch_id", branch.id);
+      // Bookings and inventory are small and operationally needed either way.
       const { data: bookings } = await supabase
         .from("schedules")
         .select("*")
         .eq("branch_id", branch.id)
+        .eq("is_deleted", false)
+        .is("voided_at", null)
         .neq("status", "cancelled");
       const { data: inventory } = await supabase
         .from("inventory")
         .select("*")
-        .eq("branch_id", branch.id);
+        .eq("branch_id", branch.id)
+        .eq("is_deleted", false)
+        .is("voided_at", null);
 
-      const todaySales =
-        sales
-          ?.filter((s) => s.sale_date === today)
-          .reduce((sum, s) => sum + s.total_amount, 0) || 0;
-      const weekSales =
-        sales
-          ?.filter((s) => s.sale_date >= weekAgo.toISOString().split("T")[0])
-          .reduce((sum, s) => sum + s.total_amount, 0) || 0;
-      const monthSales =
-        sales
-          ?.filter((s) => s.sale_date >= monthAgo.toISOString().split("T")[0])
-          .reduce((sum, s) => sum + s.total_amount, 0) || 0;
-      const todayExpenses =
-        expenses
-          ?.filter((e) => e.expense_date === today)
-          .reduce((sum, e) => sum + e.amount, 0) || 0;
-      const weekExpenses =
-        expenses
-          ?.filter((e) => e.expense_date >= weekAgo.toISOString().split("T")[0])
-          .reduce((sum, e) => sum + e.amount, 0) || 0;
-      const monthExpenses =
-        expenses
-          ?.filter(
-            (e) => e.expense_date >= monthAgo.toISOString().split("T")[0]
-          )
-          .reduce((sum, e) => sum + e.amount, 0) || 0;
+      if (isStaffView) {
+        // Staff: only today's rows ever reach the browser.
+        const { data: todaySalesRows } = await supabase
+          .from("sales")
+          .select("*")
+          .eq("branch_id", branch.id)
+          .eq("sale_date", today)
+          .eq("is_deleted", false)
+          .is("voided_at", null);
+        const { data: todayExpenseRows } = await supabase
+          .from("expenses")
+          .select("*")
+          .eq("branch_id", branch.id)
+          .eq("expense_date", today)
+          .eq("is_deleted", false)
+          .is("voided_at", null);
 
-      setStats({
-        todaySales,
-        weekSales,
-        monthSales,
-        todayExpenses,
-        weekExpenses,
-        monthExpenses,
-        totalTransactions: sales?.length || 0,
-        totalErrors: sales?.filter((s) => s.has_error).length || 0,
-        upcomingBookings: bookings?.filter((b) => b.date >= today).length || 0,
-        lowStockItems:
-          inventory?.filter((i) => i.quantity <= i.low_stock_threshold)
-            .length || 0,
-      });
+        const todaySales =
+          todaySalesRows?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
+        const todayExpenses =
+          todayExpenseRows?.reduce((sum, e) => sum + e.amount, 0) || 0;
 
-      const productMap = {};
-      sales?.forEach((sale) => {
-        productMap[sale.product] =
-          (productMap[sale.product] || 0) + sale.total_amount;
-      });
-      setProductSales(
-        Object.entries(productMap)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 6)
-      );
-
-      const last7Days = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
-        const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
-        last7Days.push({
-          day: dayName,
-          sales:
-            sales
-              ?.filter((s) => s.sale_date === dateStr)
-              .reduce((sum, s) => sum + s.total_amount, 0) || 0,
-          expenses:
-            expenses
-              ?.filter((e) => e.expense_date === dateStr)
-              .reduce((sum, e) => sum + e.amount, 0) || 0,
+        setStats({
+          todaySales,
+          weekSales: 0,
+          monthSales: 0,
+          todayExpenses,
+          weekExpenses: 0,
+          monthExpenses: 0,
+          totalTransactions: todaySalesRows?.length || 0,
+          totalErrors: todaySalesRows?.filter((s) => s.has_error).length || 0,
+          upcomingBookings:
+            bookings?.filter((b) => b.date >= today).length || 0,
+          lowStockItems:
+            inventory?.filter((i) => i.quantity <= i.low_stock_threshold)
+              .length || 0,
         });
+
+        const productMap = {};
+        todaySalesRows?.forEach((sale) => {
+          productMap[sale.product] =
+            (productMap[sale.product] || 0) + sale.total_amount;
+        });
+        setProductSales(
+          Object.entries(productMap)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 6)
+        );
+
+        setWeeklyPerformance([]);
+        setSalesData(todaySalesRows || []);
+        setBookingsData(bookings || []);
+        setInventoryData(inventory || []);
+      } else {
+        // Manager/owner: full branch history, as before.
+        const { data: sales } = await supabase
+          .from("sales")
+          .select("*")
+          .eq("branch_id", branch.id)
+          .eq("is_deleted", false)
+          .is("voided_at", null);
+        const { data: expenses } = await supabase
+          .from("expenses")
+          .select("*")
+          .eq("branch_id", branch.id)
+          .eq("is_deleted", false)
+          .is("voided_at", null);
+
+        const todaySales =
+          sales
+            ?.filter((s) => s.sale_date === today)
+            .reduce((sum, s) => sum + s.total_amount, 0) || 0;
+        const weekSales =
+          sales
+            ?.filter(
+              (s) => s.sale_date >= weekAgo.toISOString().split("T")[0]
+            )
+            .reduce((sum, s) => sum + s.total_amount, 0) || 0;
+        const monthSales =
+          sales
+            ?.filter(
+              (s) => s.sale_date >= monthAgo.toISOString().split("T")[0]
+            )
+            .reduce((sum, s) => sum + s.total_amount, 0) || 0;
+        const todayExpenses =
+          expenses
+            ?.filter((e) => e.expense_date === today)
+            .reduce((sum, e) => sum + e.amount, 0) || 0;
+        const weekExpenses =
+          expenses
+            ?.filter(
+              (e) => e.expense_date >= weekAgo.toISOString().split("T")[0]
+            )
+            .reduce((sum, e) => sum + e.amount, 0) || 0;
+        const monthExpenses =
+          expenses
+            ?.filter(
+              (e) => e.expense_date >= monthAgo.toISOString().split("T")[0]
+            )
+            .reduce((sum, e) => sum + e.amount, 0) || 0;
+
+        setStats({
+          todaySales,
+          weekSales,
+          monthSales,
+          todayExpenses,
+          weekExpenses,
+          monthExpenses,
+          totalTransactions: sales?.length || 0,
+          totalErrors: sales?.filter((s) => s.has_error).length || 0,
+          upcomingBookings:
+            bookings?.filter((b) => b.date >= today).length || 0,
+          lowStockItems:
+            inventory?.filter((i) => i.quantity <= i.low_stock_threshold)
+              .length || 0,
+        });
+
+        const productMap = {};
+        sales?.forEach((sale) => {
+          productMap[sale.product] =
+            (productMap[sale.product] || 0) + sale.total_amount;
+        });
+        setProductSales(
+          Object.entries(productMap)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 6)
+        );
+
+        const last7Days = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toISOString().split("T")[0];
+          const dayName = date.toLocaleDateString("en-US", {
+            weekday: "short",
+          });
+          last7Days.push({
+            day: dayName,
+            sales:
+              sales
+                ?.filter((s) => s.sale_date === dateStr)
+                .reduce((sum, s) => sum + s.total_amount, 0) || 0,
+            expenses:
+              expenses
+                ?.filter((e) => e.expense_date === dateStr)
+                .reduce((sum, e) => sum + e.amount, 0) || 0,
+          });
+        }
+        setWeeklyPerformance(last7Days);
+
+        setSalesData(sales || []);
+        setBookingsData(bookings || []);
+        setInventoryData(inventory || []);
       }
-      setWeeklyPerformance(last7Days);
-
-      const errorMap = {};
-      sales
-        ?.filter((s) => s.has_error && s.error_type)
-        .forEach((sale) => {
-          errorMap[sale.error_type] = (errorMap[sale.error_type] || 0) + 1;
-        });
-      setErrorData(
-        Object.entries(errorMap)
-          .map(([name, value]) => ({ name, value }))
-          .slice(0, 5)
-      );
-
-      setSalesData(sales || []);
-      setExpensesData(expenses || []);
-      setBookingsData(bookings || []);
-      setInventoryData(inventory || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -308,7 +381,7 @@ export default function Dashboard({ branch }) {
             Insights
           </h2>
           <p className="text-[var(--text-2)]">
-            Overview for{" "}
+            {isStaffView ? "Today at " : "Overview for "}
             <span className="text-[var(--accent)] font-medium">
               {branch.name}
             </span>
@@ -336,29 +409,35 @@ export default function Dashboard({ branch }) {
           colorClass="bg-emerald-500"
         />
         <StatCard
-          title="Today's Profit"
-          value={todayProfit}
-          icon={DollarSign}
-          colorClass={todayProfit >= 0 ? "bg-emerald-500" : "bg-red-500"}
-        />
-        <StatCard
-          title="Weekly Sales"
-          value={stats.weekSales}
-          icon={DollarSign}
-          colorClass="bg-blue-500"
-        />
-        <StatCard
-          title="Monthly Sales"
-          value={stats.monthSales}
-          icon={TrendingUp}
-          colorClass="bg-green-500"
-        />
-        <StatCard
           title="Today's Expenses"
           value={stats.todayExpenses}
           icon={TrendingDown}
           colorClass="bg-red-500"
         />
+        {!isStaffView && (
+          <StatCard
+            title="Today's Profit"
+            value={todayProfit}
+            icon={DollarSign}
+            colorClass={todayProfit >= 0 ? "bg-emerald-500" : "bg-red-500"}
+          />
+        )}
+        {!isStaffView && (
+          <StatCard
+            title="Weekly Sales"
+            value={stats.weekSales}
+            icon={DollarSign}
+            colorClass="bg-blue-500"
+          />
+        )}
+        {!isStaffView && (
+          <StatCard
+            title="Monthly Sales"
+            value={stats.monthSales}
+            icon={TrendingUp}
+            colorClass="bg-green-500"
+          />
+        )}
         <StatCard
           title="Printing Errors"
           value={stats.totalErrors}
@@ -366,15 +445,17 @@ export default function Dashboard({ branch }) {
           colorClass="bg-red-400"
           prefix=""
         />
+        {!isStaffView && (
+          <StatCard
+            title="Bookings"
+            value={stats.upcomingBookings}
+            icon={Calendar}
+            colorClass="bg-indigo-500"
+            prefix=""
+          />
+        )}
         <StatCard
-          title="Bookings"
-          value={stats.upcomingBookings}
-          icon={Calendar}
-          colorClass="bg-indigo-500"
-          prefix=""
-        />
-        <StatCard
-          title="Transactions"
+          title={isStaffView ? "Transactions Today" : "Transactions"}
           value={stats.totalTransactions}
           icon={ShoppingBag}
           colorClass="bg-pink-500"
@@ -383,74 +464,93 @@ export default function Dashboard({ branch }) {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
-          <CardHeader
-            title="Weekly Performance"
-            subtitle="Revenue vs Expenses"
-          />
-          <div className="h-[260px] md:h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={weeklyPerformance}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={CHART_THEME.grid}
-                />
-                <XAxis
-                  dataKey="day"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: CHART_THEME.text, fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: CHART_THEME.text, fontSize: 12 }}
-                  tickFormatter={(v) => `₱${v}`}
-                />
-                <Tooltip
-                  contentStyle={CHART_THEME.tooltip.contentStyle}
-                  itemStyle={CHART_THEME.tooltip.itemStyle}
-                />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                <Line
-                  type="monotone"
-                  dataKey="sales"
-                  stroke="#22c55e"
-                  name="Sales"
-                  strokeWidth={3}
-                  dot={{
-                    r: 4,
-                    fill: "#22c55e",
-                    strokeWidth: 2,
-                    stroke: CHART_THEME.dotStroke,
-                  }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="expenses"
-                  stroke="#ef4444"
-                  name="Expenses"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+      <div
+        className={`grid grid-cols-1 ${
+          isStaffView ? "" : "xl:grid-cols-3"
+        } gap-6`}
+      >
+        {!isStaffView && (
+          <div className="xl:col-span-2 bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
+            <CardHeader
+              title="Weekly Performance"
+              subtitle="Revenue vs Expenses"
+            />
+            <div className="h-[260px] md:h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyPerformance}>
+                  <defs>
+                    <linearGradient
+                      id="colorSales"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#22c55e"
+                        stopOpacity={0.3}
+                      />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_THEME.grid}
+                  />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: CHART_THEME.text, fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: CHART_THEME.text, fontSize: 12 }}
+                    tickFormatter={(v) => `₱${v}`}
+                  />
+                  <Tooltip
+                    contentStyle={CHART_THEME.tooltip.contentStyle}
+                    itemStyle={CHART_THEME.tooltip.itemStyle}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#22c55e"
+                    name="Sales"
+                    strokeWidth={3}
+                    dot={{
+                      r: 4,
+                      fill: "#22c55e",
+                      strokeWidth: 2,
+                      stroke: CHART_THEME.dotStroke,
+                    }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke="#ef4444"
+                    name="Expenses"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
-          <CardHeader title="Top Products" subtitle="Revenue distribution" />
+          <CardHeader
+            title="Top Products"
+            subtitle={isStaffView ? "Today's mix" : "Revenue distribution"}
+          />
           <div className="h-[240px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -562,7 +662,7 @@ export default function Dashboard({ branch }) {
         </div>
 
         <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
-          <CardHeader title="Recent Sales" />
+          <CardHeader title={isStaffView ? "Today's Sales" : "Recent Sales"} />
           <div className="space-y-3">
             {recentSales.length > 0 ? (
               recentSales.map((sale) => (
@@ -586,7 +686,7 @@ export default function Dashboard({ branch }) {
               ))
             ) : (
               <div className="text-center py-8 text-[var(--text-3)] italic text-sm">
-                No recent sales
+                {isStaffView ? "No sales yet today" : "No recent sales"}
               </div>
             )}
           </div>

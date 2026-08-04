@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Package,
   AlertCircle,
+  AlertTriangle,
   Edit,
   TrendingUp,
   TrendingDown,
@@ -9,6 +10,7 @@ import {
   Search,
   RefreshCw,
   Trash2,
+  Ban,
   X,
   ChevronRight,
   Info,
@@ -16,7 +18,10 @@ import {
 import { supabase } from "../lib/supabase";
 
 /**
- * Inventory Component — CSS-variable theming
+ * Inventory Component — Module 1: identity + audit trail
+ * - Every record stamps created_by / updated_by (staff on shift)
+ * - Staff VOID (reason required, row kept); managers/owners soft-delete
+ * - Voided and deleted items are excluded from the grid and stats
  */
 const inventoryItems = [
   {
@@ -49,7 +54,7 @@ const inventoryItems = [
   },
 ];
 
-export default function Inventory({ branch }) {
+export default function Inventory({ branch, staff }) {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,6 +62,9 @@ export default function Inventory({ branch }) {
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [voidTarget, setVoidTarget] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidBusy, setVoidBusy] = useState(false);
   const [formData, setFormData] = useState({ quantity: "", notes: "" });
   const [editFormData, setEditFormData] = useState({
     item_name: "",
@@ -71,6 +79,10 @@ export default function Inventory({ branch }) {
     low_stock_threshold: 50,
   });
 
+  // Managers and owners may remove an item outright (soft delete).
+  // Staff may only void — the row stays, flagged, with a reason.
+  const canDelete = staff?.role === "owner" || staff?.role === "manager";
+
   useEffect(() => {
     fetchInventory();
   }, [branch]);
@@ -81,6 +93,8 @@ export default function Inventory({ branch }) {
       .from("inventory")
       .select("*")
       .eq("branch_id", branch.id)
+      .eq("is_deleted", false)
+      .is("voided_at", null)
       .order("item_type");
 
     if (error) {
@@ -101,6 +115,7 @@ export default function Inventory({ branch }) {
       quantity: 100,
       unit: item.unit,
       low_stock_threshold: item.defaultThreshold,
+      created_by: staff?.id || null,
     }));
     const { error } = await supabase.from("inventory").insert(defaultItems);
     if (!error) fetchInventory();
@@ -111,7 +126,11 @@ export default function Inventory({ branch }) {
     const newQuantity = selectedItem.quantity + parseInt(formData.quantity);
     const { error } = await supabase
       .from("inventory")
-      .update({ quantity: newQuantity, updated_at: new Date() })
+      .update({
+        quantity: newQuantity,
+        updated_by: staff?.id || null,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", selectedItem.id);
 
     if (!error) {
@@ -140,7 +159,8 @@ export default function Inventory({ branch }) {
         item_name: editFormData.item_name,
         unit: editFormData.unit,
         low_stock_threshold: parseInt(editFormData.low_stock_threshold),
-        updated_at: new Date(),
+        updated_by: staff?.id || null,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", selectedItem.id);
 
@@ -151,20 +171,14 @@ export default function Inventory({ branch }) {
     }
   };
 
-  const handleDeleteItem = async (item) => {
-    if (window.confirm(`Delete ${item.item_name}?`)) {
-      const { error } = await supabase
-        .from("inventory")
-        .delete()
-        .eq("id", item.id);
-      if (!error) fetchInventory();
-    }
-  };
-
   const handleUpdateThreshold = async (item, newThreshold) => {
     const { error } = await supabase
       .from("inventory")
-      .update({ low_stock_threshold: newThreshold })
+      .update({
+        low_stock_threshold: newThreshold,
+        updated_by: staff?.id || null,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", item.id);
     if (!error) fetchInventory();
   };
@@ -181,6 +195,7 @@ export default function Inventory({ branch }) {
         quantity: parseInt(newItemData.quantity),
         unit: newItemData.unit,
         low_stock_threshold: parseInt(newItemData.low_stock_threshold),
+        created_by: staff?.id || null,
       },
     ]);
     if (!error) {
@@ -194,6 +209,41 @@ export default function Inventory({ branch }) {
       });
       fetchInventory();
     }
+  };
+
+  // Void (staff) or soft delete (manager/owner) — both keep the row and
+  // both fire the audit trigger, which pushes a notification.
+  const confirmVoid = async () => {
+    if (!voidReason.trim()) return;
+    setVoidBusy(true);
+
+    const payload = canDelete
+      ? {
+          is_deleted: true,
+          void_reason: voidReason.trim(),
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          voided_at: new Date().toISOString(),
+          voided_by: staff?.id || null,
+          void_reason: voidReason.trim(),
+        };
+
+    const { error } = await supabase
+      .from("inventory")
+      .update(payload)
+      .eq("id", voidTarget.id);
+
+    setVoidBusy(false);
+
+    if (error) {
+      alert("Could not complete: " + error.message);
+      return;
+    }
+    setVoidTarget(null);
+    setVoidReason("");
+    fetchInventory();
   };
 
   const totalItems = inventory.length;
@@ -427,14 +477,23 @@ export default function Inventory({ branch }) {
                   <button
                     onClick={() => handleEditItem(item)}
                     className="p-2 text-[var(--text-3)] hover:text-[var(--success)] transition-colors"
+                    title="Edit"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteItem(item)}
+                    onClick={() => {
+                      setVoidTarget(item);
+                      setVoidReason("");
+                    }}
                     className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] transition-colors"
+                    title={canDelete ? "Remove item" : "Void item"}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {canDelete ? (
+                      <Trash2 className="w-4 h-4" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -616,6 +675,292 @@ export default function Inventory({ branch }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {showEditItemModal && selectedItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setShowEditItemModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-bold text-[var(--text-1)]">
+                Edit Item
+              </h3>
+              <button
+                onClick={() => setShowEditItemModal(false)}
+                className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateItem} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Item Name
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.item_name}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      item_name: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Unit
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.unit}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, unit: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Low Stock Threshold
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editFormData.low_stock_threshold}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      low_stock_threshold: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  required
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditItemModal(false)}
+                  className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Item Modal */}
+      {showAddItemModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setShowAddItemModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-bold text-[var(--text-1)]">
+                Add New Item
+              </h3>
+              <button
+                onClick={() => setShowAddItemModal(false)}
+                className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddNewItem} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Item Type
+                </label>
+                <select
+                  value={newItemData.item_type}
+                  onChange={(e) =>
+                    setNewItemData({
+                      ...newItemData,
+                      item_type: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--select-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                >
+                  {inventoryItems.map((i) => (
+                    <option key={i.type} value={i.type}>
+                      {i.icon} {i.name}
+                    </option>
+                  ))}
+                  <option value="frame">🖼️ Photo Frame</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Custom Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newItemData.item_name}
+                  onChange={(e) =>
+                    setNewItemData({
+                      ...newItemData,
+                      item_name: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newItemData.quantity}
+                    onChange={(e) =>
+                      setNewItemData({
+                        ...newItemData,
+                        quantity: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                    Unit
+                  </label>
+                  <input
+                    type="text"
+                    value={newItemData.unit}
+                    onChange={(e) =>
+                      setNewItemData({ ...newItemData, unit: e.target.value })
+                    }
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                  Low Stock Threshold
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newItemData.low_stock_threshold}
+                  onChange={(e) =>
+                    setNewItemData({
+                      ...newItemData,
+                      low_stock_threshold: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                  required
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddItemModal(false)}
+                  className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+                >
+                  Add Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Void / Remove Modal — reason is mandatory */}
+      {voidTarget && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setVoidTarget(null)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-500/15 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-[var(--danger)]" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-1)]">
+                {canDelete ? "Remove Item" : "Void Item"}
+              </h3>
+            </div>
+
+            <div className="p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl mb-5">
+              <p className="text-sm font-semibold text-[var(--text-1)]">
+                {voidTarget.item_name}
+              </p>
+              <p className="text-xs text-[var(--text-3)] mt-0.5">
+                {voidTarget.quantity} {voidTarget.unit} in stock
+              </p>
+            </div>
+
+            <div className="space-y-1.5 mb-6">
+              <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                Reason (required)
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                rows="3"
+                autoFocus
+                placeholder="e.g. discontinued item, entered by mistake"
+                className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-sm placeholder:text-[var(--text-3)] focus:ring-2 focus:ring-red-500/50 outline-none"
+              />
+              <p className="text-[10px] text-[var(--text-3)]">
+                The record is kept and hidden from the grid. This action is
+                logged under {staff?.name || "your account"}.
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setVoidTarget(null)}
+                className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmVoid}
+                disabled={!voidReason.trim() || voidBusy}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-500/20"
+              >
+                {voidBusy
+                  ? "Working..."
+                  : canDelete
+                  ? "Remove Item"
+                  : "Void Item"}
+              </button>
+            </div>
           </div>
         </div>
       )}

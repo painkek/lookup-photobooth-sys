@@ -6,18 +6,21 @@ import {
   Trash2,
   Eye,
   AlertTriangle,
+  Ban,
   Calendar,
   Package as PackageIcon,
   DollarSign,
-  CreditCard,
   X,
   CheckCircle2,
-  ArrowRight,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { todayLocal } from "../lib/dates";
 
 /**
- * Sales Component — CSS-variable theming
+ * Sales Component — Module 1: identity + audit trail
+ * - Every record stamps created_by / updated_by (staff on shift)
+ * - Staff VOID (reason required, row kept); managers/owners soft-delete
+ * - Voided and deleted rows are excluded from all lists and totals
  */
 const products = [
   { name: "Snapshot", price: 150, description: "Snapshot" },
@@ -40,7 +43,7 @@ const errorTypes = [
   "Other",
 ];
 
-export default function Sales({ branch }) {
+export default function Sales({ branch, staff }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,6 +51,9 @@ export default function Sales({ branch }) {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
   const [viewingSale, setViewingSale] = useState(null);
+  const [voidTarget, setVoidTarget] = useState(null); // sale being voided/removed
+  const [voidReason, setVoidReason] = useState("");
+  const [voidBusy, setVoidBusy] = useState(false);
   const [formData, setFormData] = useState({
     customer_name: "",
     product: "Snapshot",
@@ -56,8 +62,12 @@ export default function Sales({ branch }) {
     has_error: false,
     error_type: "",
     error_notes: "",
-    sale_date: new Date().toISOString().split("T")[0],
+    sale_date: todayLocal(),
   });
+
+  // Managers and owners may remove a record outright (soft delete).
+  // Staff may only void — the row stays, flagged, with a reason.
+  const canDelete = staff?.role === "owner" || staff?.role === "manager";
 
   useEffect(() => {
     fetchSales();
@@ -69,6 +79,8 @@ export default function Sales({ branch }) {
       .from("sales")
       .select("*")
       .eq("branch_id", branch.id)
+      .eq("is_deleted", false)
+      .is("voided_at", null)
       .order("sale_date", { ascending: false });
 
     if (error) {
@@ -110,6 +122,8 @@ export default function Sales({ branch }) {
       error_type: formData.has_error ? formData.error_type : null,
       error_notes: formData.has_error ? formData.error_notes : null,
       sale_date: formData.sale_date,
+      updated_by: staff?.id || null,
+      updated_at: new Date().toISOString(),
     };
 
     const { error } = await supabase
@@ -125,28 +139,6 @@ export default function Sales({ branch }) {
       resetForm();
       fetchSales();
     }
-  };
-
-  const handleDelete = async (sale) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete the sale for ${
-          sale.customer_name || "Walk-in"
-        }?`
-      )
-    ) {
-      const { error } = await supabase.from("sales").delete().eq("id", sale.id);
-      if (error) {
-        alert("Error deleting sale: " + error.message);
-      } else {
-        fetchSales();
-      }
-    }
-  };
-
-  const handleView = (sale) => {
-    setViewingSale(sale);
-    setShowViewModal(true);
   };
 
   const handleSubmit = async (e) => {
@@ -166,6 +158,7 @@ export default function Sales({ branch }) {
       error_type: formData.has_error ? formData.error_type : null,
       error_notes: formData.has_error ? formData.error_notes : null,
       sale_date: formData.sale_date,
+      created_by: staff?.id || null,
     };
 
     const { error } = await supabase.from("sales").insert([saleData]);
@@ -179,6 +172,46 @@ export default function Sales({ branch }) {
     }
   };
 
+  // Void (staff) or soft delete (manager/owner) — both keep the row and
+  // both fire the audit trigger, which pushes a notification.
+  const confirmVoid = async () => {
+    if (!voidReason.trim()) return;
+    setVoidBusy(true);
+
+    const payload = canDelete
+      ? {
+          is_deleted: true,
+          void_reason: voidReason.trim(),
+          updated_by: staff?.id || null,
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          voided_at: new Date().toISOString(),
+          voided_by: staff?.id || null,
+          void_reason: voidReason.trim(),
+        };
+
+    const { error } = await supabase
+      .from("sales")
+      .update(payload)
+      .eq("id", voidTarget.id);
+
+    setVoidBusy(false);
+
+    if (error) {
+      alert("Could not complete: " + error.message);
+      return;
+    }
+    setVoidTarget(null);
+    setVoidReason("");
+    fetchSales();
+  };
+
+  const handleView = (sale) => {
+    setViewingSale(sale);
+    setShowViewModal(true);
+  };
+
   const resetForm = () => {
     setFormData({
       customer_name: "",
@@ -188,12 +221,12 @@ export default function Sales({ branch }) {
       has_error: false,
       error_type: "",
       error_notes: "",
-      sale_date: new Date().toISOString().split("T")[0],
+      sale_date: todayLocal(),
     });
   };
 
   const todaySales = sales
-    .filter((s) => s.sale_date === new Date().toISOString().split("T")[0])
+    .filter((s) => s.sale_date === todayLocal())
     .reduce((sum, s) => sum + s.total_amount, 0);
 
   const totalErrors = sales.filter((s) => s.has_error).length;
@@ -208,7 +241,7 @@ export default function Sales({ branch }) {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="w-10 h-10 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin" />
+        <div className="w-10 h-10 rounded-full border-2 border-green-500/20 border-b-green-500 animate-spin" />
       </div>
     );
   }
@@ -218,7 +251,9 @@ export default function Sales({ branch }) {
       <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest mb-1">
         {title}
       </p>
-      <p className={`text-xl font-semibold tracking-tight ${colorClass}`}>
+      <p
+        className={`text-lg md:text-xl font-semibold tracking-tight truncate ${colorClass}`}
+      >
         {prefix}
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
@@ -280,7 +315,7 @@ export default function Sales({ branch }) {
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-2xl p-4 backdrop-blur-sm">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-2xl p-4">
         <div className="relative group">
           <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--text-3)] group-focus-within:text-[var(--accent)] transition-colors" />
           <input
@@ -288,13 +323,13 @@ export default function Sales({ branch }) {
             placeholder="Search transactions by customer or product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
           />
         </div>
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden md:block bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl overflow-hidden backdrop-blur-sm">
+      <div className="hidden md:block bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -372,20 +407,30 @@ export default function Sales({ branch }) {
                       <button
                         onClick={() => handleView(sale)}
                         className="p-2 text-[var(--text-3)] hover:text-[var(--info)] hover:bg-blue-400/10 rounded-lg transition-all"
+                        title="View"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEdit(sale)}
-                        className="p-2 text-[var(--text-3)] hover:text-[var(--accent)] hover:bg-purple-400/10 rounded-lg transition-all"
+                        className="p-2 text-[var(--text-3)] hover:text-[var(--accent)] hover:bg-green-400/10 rounded-lg transition-all"
+                        title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(sale)}
+                        onClick={() => {
+                          setVoidTarget(sale);
+                          setVoidReason("");
+                        }}
                         className="p-2 text-[var(--text-3)] hover:text-[var(--danger)] hover:bg-red-400/10 rounded-lg transition-all"
+                        title={canDelete ? "Remove record" : "Void sale"}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {canDelete ? (
+                          <Trash2 className="w-4 h-4" />
+                        ) : (
+                          <Ban className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -403,16 +448,16 @@ export default function Sales({ branch }) {
             key={sale.id}
             className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 space-y-4"
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-bold text-[var(--text-1)]">
+            <div className="flex justify-between items-start gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--text-1)] truncate">
                   {sale.customer_name || "Walk-in"}
                 </p>
                 <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">
                   {sale.sale_date}
                 </p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-shrink-0">
                 <button
                   onClick={() => handleView(sale)}
                   className="p-2 text-[var(--text-3)]"
@@ -426,10 +471,17 @@ export default function Sales({ branch }) {
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDelete(sale)}
+                  onClick={() => {
+                    setVoidTarget(sale);
+                    setVoidReason("");
+                  }}
                   className="p-2 text-[var(--danger)] opacity-70"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {canDelete ? (
+                    <Trash2 className="w-4 h-4" />
+                  ) : (
+                    <Ban className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -456,7 +508,7 @@ export default function Sales({ branch }) {
       </div>
 
       {/* Product Price List */}
-      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 backdrop-blur-sm">
+      <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6">
         <h3 className="text-lg font-semibold text-[var(--text-1)] mb-6">
           Product Price List
         </h3>
@@ -464,7 +516,7 @@ export default function Sales({ branch }) {
           {products.map((product) => (
             <div
               key={product.name}
-              className="group p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl text-center hover:border-purple-500/30 hover:bg-purple-500/5 transition-all"
+              className="group p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl text-center hover:border-green-500/30 hover:bg-green-500/5 transition-all"
             >
               <p className="text-xs font-bold text-[var(--text-3)] uppercase mb-2 group-hover:text-[var(--accent)]">
                 {product.name}
@@ -486,9 +538,16 @@ export default function Sales({ branch }) {
           />
           <div className="relative w-full max-w-lg bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--chip-bg)]">
-              <h3 className="text-xl font-bold text-[var(--text-1)]">
-                {editingSale ? "Edit Transaction" : "New Transaction"}
-              </h3>
+              <div>
+                <h3 className="text-xl font-bold text-[var(--text-1)]">
+                  {editingSale ? "Edit Transaction" : "New Transaction"}
+                </h3>
+                {staff && (
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-3)] mt-0.5">
+                    Recording as {staff.name}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowModal(false)}
                 className="p-2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
@@ -514,7 +573,7 @@ export default function Sales({ branch }) {
                         customer_name: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-green-500/50 outline-none"
                     required
                   />
                 </div>
@@ -528,7 +587,7 @@ export default function Sales({ branch }) {
                     onChange={(e) =>
                       setFormData({ ...formData, sale_date: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-green-500/50 outline-none"
                   />
                 </div>
               </div>
@@ -543,7 +602,7 @@ export default function Sales({ branch }) {
                     onChange={(e) =>
                       setFormData({ ...formData, product: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[var(--select-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--select-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-green-500/50 outline-none"
                   >
                     {products.map((p) => (
                       <option key={p.name} value={p.name}>
@@ -566,7 +625,7 @@ export default function Sales({ branch }) {
                         quantity: parseInt(e.target.value),
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-purple-500/50 outline-none"
+                    className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] focus:ring-2 focus:ring-green-500/50 outline-none"
                     required
                   />
                 </div>
@@ -586,7 +645,7 @@ export default function Sales({ branch }) {
                       }
                       className={`py-2 rounded-xl border text-xs font-bold uppercase transition-all ${
                         formData.payment_method === method
-                          ? "bg-purple-600 border-purple-500 text-white"
+                          ? "bg-green-600 border-green-500 text-white"
                           : "bg-[var(--chip-bg)] border-[var(--border)] text-[var(--text-3)] hover:bg-[var(--chip-bg-hover)]"
                       }`}
                     >
@@ -663,8 +722,8 @@ export default function Sales({ branch }) {
                 </div>
               )}
 
-              <div className="p-4 bg-green-500/10 border border-black-500/30 rounded-2xl flex justify-between items-center">
-                <span className="text-sm font-bold text  uppercase tracking-wider">
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-2xl flex justify-between items-center">
+                <span className="text-sm font-bold text-[var(--success)] uppercase tracking-wider">
                   Total Amount
                 </span>
                 <span className="text-2xl font-bold text-[var(--text-1)]">
@@ -686,12 +745,81 @@ export default function Sales({ branch }) {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-500/20"
                 >
                   {editingSale ? "Update Record" : "Complete Transaction"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Void / Remove Modal — reason is mandatory */}
+      {voidTarget && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            onClick={() => setVoidTarget(null)}
+          />
+          <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-500/15 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-[var(--danger)]" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-1)]">
+                {canDelete ? "Remove Record" : "Void Sale"}
+              </h3>
+            </div>
+
+            <div className="p-4 bg-[var(--chip-bg)] border border-[var(--border)] rounded-2xl mb-5">
+              <p className="text-sm font-semibold text-[var(--text-1)]">
+                {voidTarget.customer_name || "Walk-in"} — {voidTarget.product} x
+                {voidTarget.quantity}
+              </p>
+              <p className="text-xs text-[var(--text-3)] mt-0.5">
+                {voidTarget.sale_date} · ₱
+                {voidTarget.total_amount.toLocaleString()}
+              </p>
+            </div>
+
+            <div className="space-y-1.5 mb-6">
+              <label className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
+                Reason (required)
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                rows="3"
+                autoFocus
+                placeholder="e.g. wrong product selected, customer cancelled"
+                className="w-full px-4 py-2.5 bg-[var(--chip-bg)] border border-[var(--border)] rounded-xl text-[var(--text-1)] text-sm placeholder:text-[var(--text-3)] focus:ring-2 focus:ring-red-500/50 outline-none"
+              />
+              <p className="text-[10px] text-[var(--text-3)]">
+                The record is kept and excluded from totals. This action is
+                logged under {staff?.name || "your account"}.
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setVoidTarget(null)}
+                className="flex-1 py-3 text-sm font-bold text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmVoid}
+                disabled={!voidReason.trim() || voidBusy}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-500/20"
+              >
+                {voidBusy
+                  ? "Working..."
+                  : canDelete
+                  ? "Remove Record"
+                  : "Void Sale"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -705,7 +833,7 @@ export default function Sales({ branch }) {
           />
           <div className="relative w-full max-w-md bg-[var(--modal-bg)] border border-[var(--border-hover)] rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <PackageIcon className="w-8 h-8 text-[var(--accent)]" />
               </div>
               <h3 className="text-2xl font-bold text-[var(--text-1)]">
@@ -791,7 +919,7 @@ export default function Sales({ branch }) {
               </button>
               <button
                 onClick={() => setShowViewModal(false)}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
+                className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-500/20"
               >
                 Close
               </button>

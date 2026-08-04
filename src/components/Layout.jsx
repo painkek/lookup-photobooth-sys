@@ -8,6 +8,9 @@ import {
   Calendar,
   FileText,
   LogOut,
+  Users,
+  History,
+  Wallet,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 
@@ -16,7 +19,13 @@ import ThemeToggle from "./ThemeToggle";
  * Colors come from the variables in index.css (:root = light, .dark = dark).
  * The ThemeToggle here controls the whole app.
  */
-export default function Layout({ branch, onLogout, children }) {
+export default function Layout({
+  branch,
+  staff,
+  onLogout,
+  onSwitchStaff,
+  children,
+}) {
   const location = useLocation();
 
   const navItems = [
@@ -26,6 +35,12 @@ export default function Layout({ branch, onLogout, children }) {
     { path: "/inventory", icon: Package, label: "Inventory" },
     { path: "/schedule", icon: Calendar, label: "Schedule" },
     { path: "/reports", icon: FileText, label: "Reports" },
+    ...(staff?.role === "owner"
+      ? [
+          { path: "/budget", icon: Wallet, label: "Budget" },
+          { path: "/audit-log", icon: History, label: "Audit Log" },
+        ]
+      : []),
   ];
 
   return (
@@ -38,11 +53,11 @@ export default function Layout({ branch, onLogout, children }) {
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
-          <div className="flex justify-between items-center">
+        <div className="px-4 py-3 mx-auto max-w-7xl sm:px-6 lg:px-8 md:py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                <div className="absolute transition duration-1000 rounded-lg opacity-25 -inset-1 bg-gradient-to-r from-purple-600 to-indigo-600 blur group-hover:opacity-50 group-hover:duration-200"></div>
                 <img
                   src="/logo.png"
                   alt="Lookup Photobooth"
@@ -56,12 +71,29 @@ export default function Layout({ branch, onLogout, children }) {
                 </h1>
                 <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-[var(--text-3)] font-medium">
                   {branch.name}
+                  {staff && (
+                    <>
+                      <span className="mx-1.5 opacity-40">&middot;</span>
+                      <span className="text-[var(--accent)]">
+                        {staff.name}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              {staff && onSwitchStaff && (
+                <button
+                  onClick={onSwitchStaff}
+                  className="group flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--text-2)] hover:text-[var(--accent)] transition-all duration-300 rounded-full border border-[var(--border)] hover:border-purple-500/20 hover:bg-purple-500/5"
+                >
+                  <Users className="w-4 h-4" />
+                  <span className="hidden sm:inline">Switch Staff</span>
+                </button>
+              )}
               <button
                 onClick={onLogout}
                 className="group flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--text-2)] hover:text-[var(--danger)] transition-all duration-300 rounded-full border border-[var(--border)] hover:border-red-500/30 hover:bg-red-500/5"
@@ -74,11 +106,11 @@ export default function Layout({ branch, onLogout, children }) {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-        <div className="flex flex-col md:flex-row gap-8">
+      <div className="relative px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 md:flex-row">
           {/* Sidebar Navigation (Desktop) */}
-          <nav className="w-64 flex-shrink-0 hidden md:block">
-            <div className="sticky top-28 space-y-2">
+          <nav className="flex-shrink-0 hidden w-64 md:block">
+            <div className="sticky space-y-2 top-28">
               <div className="px-4 mb-4">
                 <p className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">
                   Main Menu
@@ -117,9 +149,9 @@ export default function Layout({ branch, onLogout, children }) {
           </nav>
 
           {/* Bottom Navigation (Mobile) */}
-          <div className="md:hidden fixed bottom-6 left-4 right-4 z-50">
+          <div className="fixed z-50 md:hidden bottom-6 left-4 right-4">
             <div className="bg-[var(--nav-pill-bg)] backdrop-blur-xl border border-[var(--border-hover)] rounded-2xl shadow-2xl px-2 py-2">
-              <div className="flex justify-around items-center">
+              <div className="flex items-center justify-around">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
@@ -140,6 +172,14 @@ export default function Layout({ branch, onLogout, children }) {
                     </Link>
                   );
                 })}
+                {staff && onSwitchStaff && (
+                  <button
+                    onClick={onSwitchStaff}
+                    className="flex flex-col items-center gap-1 p-2 text-[var(--text-3)] hover:text-[var(--accent)]"
+                  >
+                    <Users className="w-5 h-5" />
+                  </button>
+                )}
                 <button
                   onClick={onLogout}
                   className="flex flex-col items-center gap-1 p-2 text-[var(--text-3)] hover:text-[var(--danger)]"
@@ -153,8 +193,8 @@ export default function Layout({ branch, onLogout, children }) {
           {/* Main Content Area */}
           <main className="flex-1 pb-24 md:pb-0">
             <div className="bg-[var(--panel-bg)] border border-[var(--border)] rounded-3xl p-6 min-h-[60vh]">
-  {children}
-</div>
+              {children}
+            </div>
           </main>
         </div>
       </div>
