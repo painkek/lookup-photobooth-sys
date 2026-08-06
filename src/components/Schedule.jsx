@@ -248,7 +248,17 @@ export default function Schedule({ branch, staff }) {
     fetchBookings();
   };
 
-  const formatDateForInput = (date) => date.toISOString().split("T")[0];
+  // Built from local date parts on purpose — toISOString() converts to
+  // UTC first, which shifts every date back a day in UTC+8 (Philippines):
+  // local midnight Aug 7 becomes "2026-08-06" once converted to UTC.
+  // That was causing the calendar's "today" highlight and every booking
+  // marker to land one cell later than the actual date.
+  const formatDateForInput = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
   const changeMonth = (inc) =>
     setCurrentMonth(
       new Date(currentMonth.getFullYear(), currentMonth.getMonth() + inc, 1)
